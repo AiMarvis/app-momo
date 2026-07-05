@@ -11,14 +11,9 @@ permissions:
 
 jobs:
   macos:
-    name: macOS ${{ matrix.target }}
+    name: macOS universal
     runs-on: macos-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        target:
-          - aarch64-apple-darwin
-          - x86_64-apple-darwin
+    timeout-minutes: 90
 
     steps:
       - name: Checkout
@@ -47,7 +42,13 @@ jobs:
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
         with:
-          targets: ${{ matrix.target }}
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
+
+      - name: Cache Rust build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: ". -> target"
+          cache-on-failure: true
 
       - name: Install frontend dependencies
         run: pnpm install --frozen-lockfile
@@ -67,7 +68,7 @@ jobs:
         with:
           projectPath: apps/desktop
           tauriScript: pnpm tauri
-          args: --target ${{ matrix.target }}
+          args: --target universal-apple-darwin
           tagName: v__VERSION__
           releaseName: Momo v__VERSION__
           releaseBody: "Signed and notarized macOS build."
