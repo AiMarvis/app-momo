@@ -1,0 +1,69 @@
+name: kuku-local
+
+# Local stack: web + server + postgres on distinct host ports so the
+# browser treats web and API as separate origins and CORS actually gets
+# exercised (matches preview/prod topology without needing real DNS).
+#
+# All containers bind to 127.0.0.1 only — nothing should be reachable
+# from the LAN even if the dev machine is on a shared network.
+services:
+  server:
+    build:
+      context: ../../..
+      dockerfile: infra/docker/server/Dockerfile
+    env_file:
+      - ./env
+    ports:
+      - "127.0.0.1:${SERVER_PORT:-8080}:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  web:
+    build:
+      context: ../../..
+      dockerfile: infra/docker/web/Dockerfile
+      args:
+        # Baked into the JS bundle at build time. Must match the server
+        # host port above so cross-origin requests land on our server.
+        PUBLIC_KUKU_API_BASE_URL: "${PUBLIC_KUKU_API_BASE_URL:-http://localhost:8080}"
+    ports:
+      - "127.0.0.1:${WEB_PORT:-8081}:80"
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-kuku}
+      POSTGRES_USER: ${POSTGRES_USER:-kuku}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-dev}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    ports:
+      # Exposed so a host-side psql / GUI can connect; bind to loopback
+      # only and keep POSTGRES_PASSWORD dev-only.
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-kuku} -d ${POSTGRES_DB:-kuku}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  # Catches every email the server sends (OTP codes, account changes,
+  # etc) and shows them at http://localhost:8025. No real SMTP, no
+  # outbound network — works fully offline. Server env points
+  # SMTP_HOST at this service's container name.
+  mailpit:
+    image: axllent/mailpit:latest
+    ports:
+      - "127.0.0.1:${MAILPIT_UI_PORT:-8025}:8025"   # web inbox
+      - "127.0.0.1:${MAILPIT_SMTP_PORT:-1025}:1025" # SMTP (optional host access)
+    environment:
+      MP_SMTP_AUTH_ACCEPT_ANY: "true"
+      MP_SMTP_AUTH_ALLOW_INSECURE: "true"
+    restart: unless-stopped
+
+volumes:
+  postgres-data:

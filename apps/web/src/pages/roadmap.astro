@@ -1,0 +1,848 @@
+---
+import MarketingPageLayout from '@/layouts/marketing_page_layout.astro';
+import type { MessageKey } from '@/i18n';
+
+type MilestonePhase = 'shipped' | 'progress' | 'planned';
+
+interface Milestone {
+  phase: MilestonePhase;
+  phaseLabel: string;
+  title: string;
+  subtitle: string;
+  body: string;
+  viz:
+    | 'foundation'
+    | 'launch'
+    | 'rebuild'
+    | 'release'
+    | 'pro'
+    | 'search'
+    | 'sync'
+    | 'extensions'
+    | 'teams';
+  vizCaption: string;
+}
+
+const milestones: Milestone[] = [
+  {
+    phase: 'shipped',
+    phaseLabel: 'Shipped',
+    title: 'Zero to First',
+    subtitle: 'Building the foundation',
+    body: 'Chose Tauri v2 over Electron for native performance. Built with React 19 and Tiptap. Shipped with core Markdown editing, bidirectional [[wikilinks]], backlink panel, and force-directed graph view — all running locally.',
+    viz: 'foundation',
+    vizCaption: 'Native stack',
+  },
+  {
+    phase: 'shipped',
+    phaseLabel: 'Shipped',
+    title: 'Product Hunt Launch',
+    subtitle: 'AI features & community feedback',
+    body: 'Launched on Product Hunt with AI Agent (Gemini), local speech-to-text (Whisper.cpp), inline diff previews, and full-text search. The community response made it clear: users want complete control over their data and infrastructure.',
+    viz: 'launch',
+    vizCaption: 'Shipped capabilities',
+  },
+  {
+    phase: 'shipped',
+    phaseLabel: 'Shipped',
+    title: 'The Rebuild',
+    subtitle: 'SolidJS + pure ProseMirror',
+    body: 'Complete rewrite from the ground up. Migrated to SolidJS and pure ProseMirror for better performance, no proprietary wrappers, and a clean foundation for the plugin system. This is the right foundation for everything we are building next.',
+    viz: 'rebuild',
+    vizCaption: 'Editor core',
+  },
+  {
+    phase: 'progress',
+    phaseLabel: 'In progress',
+    title: '1.0 Release',
+    subtitle: 'Open source everything',
+    body: 'Fully open source under the MIT license — client, server, and infra code all in one repo. Meeting notes with local Whisper, GitHub Sync, Homebrew distribution, and full server code with self-hosting guides. Three ways to use: self-host, bring your own services, or use Momo managed services.',
+    viz: 'release',
+    vizCaption: 'Licensing',
+  },
+  {
+    phase: 'planned',
+    phaseLabel: 'Post-1.0 · Planned',
+    title: 'Managed Pro',
+    subtitle: 'Momo account & hosted AI',
+    body: 'Subscription tier for people who want Momo to run hosted AI, encrypted sync, usage visibility, and billing in one dashboard — without self-hosting. Multi-provider remote routing and storage envelopes as sketched on pricing. Target $10/month after public beta, once 1.0 account infrastructure lands.',
+    viz: 'pro',
+    vizCaption: 'Managed Pro',
+  },
+  {
+    phase: 'planned',
+    phaseLabel: 'Post-1.0 · Planned',
+    title: 'Enhanced Search & Graph',
+    subtitle: 'Semantic + hybrid retrieval',
+    body: 'Semantic understanding powered by local embedding models. Run nomic-embed-text on-device using Ollama or ONNX Runtime. Hybrid search combining keywords with semantic similarity. Smart graph view based on semantic connections.',
+    viz: 'search',
+    vizCaption: 'Hybrid search',
+  },
+  {
+    phase: 'planned',
+    phaseLabel: 'Post-1.0 · Planned',
+    title: 'Sync & Mobile',
+    subtitle: 'Encrypted sync & native apps',
+    body: 'Zero-knowledge encrypted sync through Momo managed services, self-hosted servers, or your own S3 bucket. Native iOS and Android apps with full editing capabilities. Smart conflict resolution and offline-first design.',
+    viz: 'sync',
+    vizCaption: 'Sync model',
+  },
+  {
+    phase: 'planned',
+    phaseLabel: 'Post-1.0 · Planned',
+    title: 'Extension Ecosystem',
+    subtitle: 'Plugins & collaboration',
+    body: 'Public plugin SDK with full documentation. Community plugin marketplace. Real-time collaboration extensions become possible. Web clipper for capturing content. AI Memory Sharing — let other AI assistants access your knowledge base through a secure, local API.',
+    viz: 'extensions',
+    vizCaption: 'Plugins',
+  },
+  {
+    phase: 'planned',
+    phaseLabel: 'Post-1.0 · Planned',
+    title: 'Team Second Brain',
+    subtitle: 'Shared context for teams',
+    body: 'Team workspaces will let members share second brain context: docs, decisions, backlinks, and AI-ready memory grounded in the same vault. The planned Team plan is $15 per seat/month after personal Pro stabilizes.',
+    viz: 'teams',
+    vizCaption: 'Team memory',
+  },
+];
+
+type MilestoneI18nField = 'phase' | 'title' | 'sub' | 'body' | 'cap';
+
+const milestoneI18nKeys = {
+  foundation: {
+    phase: 'rm.foundation.phase',
+    title: 'rm.foundation.title',
+    sub: 'rm.foundation.sub',
+    body: 'rm.foundation.body',
+    cap: 'rm.foundation.cap',
+  },
+  launch: {
+    phase: 'rm.launch.phase',
+    title: 'rm.launch.title',
+    sub: 'rm.launch.sub',
+    body: 'rm.launch.body',
+    cap: 'rm.launch.cap',
+  },
+  rebuild: {
+    phase: 'rm.rebuild.phase',
+    title: 'rm.rebuild.title',
+    sub: 'rm.rebuild.sub',
+    body: 'rm.rebuild.body',
+    cap: 'rm.rebuild.cap',
+  },
+  release: {
+    phase: 'rm.release.phase',
+    title: 'rm.release.title',
+    sub: 'rm.release.sub',
+    body: 'rm.release.body',
+    cap: 'rm.release.cap',
+  },
+  pro: {
+    phase: 'rm.pro.phase',
+    title: 'rm.pro.title',
+    sub: 'rm.pro.sub',
+    body: 'rm.pro.body',
+    cap: 'rm.pro.cap',
+  },
+  search: {
+    phase: 'rm.search.phase',
+    title: 'rm.search.title',
+    sub: 'rm.search.sub',
+    body: 'rm.search.body',
+    cap: 'rm.search.cap',
+  },
+  sync: {
+    phase: 'rm.sync.phase',
+    title: 'rm.sync.title',
+    sub: 'rm.sync.sub',
+    body: 'rm.sync.body',
+    cap: 'rm.sync.cap',
+  },
+  extensions: {
+    phase: 'rm.extensions.phase',
+    title: 'rm.extensions.title',
+    sub: 'rm.extensions.sub',
+    body: 'rm.extensions.body',
+    cap: 'rm.extensions.cap',
+  },
+  teams: {
+    phase: 'rm.teams.phase',
+    title: 'rm.teams.title',
+    sub: 'rm.teams.sub',
+    body: 'rm.teams.body',
+    cap: 'rm.teams.cap',
+  },
+} as const satisfies Record<Milestone['viz'], Record<MilestoneI18nField, MessageKey>>;
+---
+
+<MarketingPageLayout
+  wide
+  title="Roadmap | Momo"
+  description="How Momo evolved from a native Markdown vault to open source, AI-aware editing — and what is next."
+>
+  <div class="lp-roadmap">
+    <h1 data-i18n="rm.title">Roadmap</h1>
+    <p class="lp-lead" data-i18n="rm.lead">
+      Milestones and what is next — quiet visuals, same One Light sensibility as the product.
+    </p>
+    <p class="lp-rm-translated" data-i18n="rm.translated"></p>
+
+    <div class="lp-rm-list" id="lp-rm-list" aria-label="Product roadmap">
+      {
+        milestones.map((m, i) => (
+          <div class="lp-rm-item" style={`--rm-i: ${i}`}>
+            <article class="lp-rm-card" data-rm-viz={m.viz}>
+              <div class="lp-rm-copy">
+                <div class="lp-rm-meta">
+                  <span
+                    class:list={['lp-rm-pill', `lp-rm-pill--${m.phase}`]}
+                    data-i18n={milestoneI18nKeys[m.viz].phase}
+                  >
+                    {m.phaseLabel}
+                  </span>
+                  <span class="lp-rm-era" data-i18n={milestoneI18nKeys[m.viz].sub}>
+                    {m.subtitle}
+                  </span>
+                </div>
+                <h2 class="lp-rm-title" data-i18n={milestoneI18nKeys[m.viz].title}>
+                  {m.title}
+                </h2>
+                <p class="lp-rm-body" data-i18n={milestoneI18nKeys[m.viz].body}>
+                  {m.body}
+                </p>
+              </div>
+              <div class:list={['lp-rm-viz', `lp-rm-viz--${m.viz}`]} aria-hidden="true">
+                <div class="lp-rm-viz-inner">
+                  {m.viz === 'foundation' && (
+                    <>
+                      <div class="lp-rm-stack">
+                        <span class="lp-rm-chip">Tauri v2</span>
+                        <span class="lp-rm-chip lp-rm-chip--quiet">React 19</span>
+                        <span class="lp-rm-chip lp-rm-chip--quiet">Tiptap</span>
+                      </div>
+                      <p class="lp-rm-mono lp-rm-wl">[[wikilinks]]</p>
+                      <div class="lp-rm-graph-min">
+                        <span class="lp-rm-graph-min__dot" />
+                        <span class="lp-rm-graph-min__dot" />
+                        <span class="lp-rm-graph-min__hub" />
+                        <span class="lp-rm-graph-min__dot" />
+                      </div>
+                    </>
+                  )}
+                  {m.viz === 'launch' && (
+                    <ul class="lp-rm-min-list">
+                      <li class="lp-rm-min-list__li lp-rm-min-list__li--accent">
+                        AI Agent · Gemini
+                      </li>
+                      <li class="lp-rm-min-list__li">Whisper.cpp</li>
+                      <li class="lp-rm-min-list__li lp-rm-min-list__li--muted">
+                        Inline diff · search
+                      </li>
+                    </ul>
+                  )}
+                  {m.viz === 'rebuild' && (
+                    <>
+                      <div class="lp-rm-bars">
+                        <span class="lp-rm-bar" />
+                        <span class="lp-rm-bar lp-rm-bar--mid" />
+                        <span class="lp-rm-bar lp-rm-bar--short" />
+                      </div>
+                      <div class="lp-rm-tags">
+                        <span>SolidJS</span>
+                        <span>ProseMirror</span>
+                      </div>
+                    </>
+                  )}
+                  {m.viz === 'release' && (
+                    <div class="lp-rm-lic">
+                      <div class="lp-rm-lic__row">
+                        <span class="lp-rm-lic__badge">MIT</span>
+                      </div>
+                      <p class="lp-rm-mono lp-rm-lic__hint">Client · Server · Infra</p>
+                    </div>
+                  )}
+                  {m.viz === 'pro' && (
+                    <div class="lp-rm-pro">
+                      <div class="lp-rm-pro__head">
+                        <span class="lp-rm-pro__badge">Pro</span>
+                        <span class="lp-rm-pro__hint">momo</span>
+                      </div>
+                      <ul class="lp-rm-min-list">
+                        <li class="lp-rm-min-list__li lp-rm-min-list__li--accent">
+                          Dashboard · billing
+                        </li>
+                        <li class="lp-rm-min-list__li">Hosted AI · usage</li>
+                        <li class="lp-rm-min-list__li lp-rm-min-list__li--muted">
+                          Encrypted sync · keys
+                        </li>
+                      </ul>
+                    </div>
+                  )}
+                  {m.viz === 'search' && (
+                    <>
+                      <div class="lp-rm-find">
+                        <span class="lp-rm-mono lp-rm-find__kbd">Cmd+K</span>
+                        <span class="lp-rm-find__ph">Hybrid query…</span>
+                      </div>
+                      <p class="lp-rm-mono lp-rm-find__sub">nomic-embed · on-device</p>
+                    </>
+                  )}
+                  {m.viz === 'sync' && (
+                    <div class="lp-rm-link-row">
+                      <span class="lp-rm-link-row__a" />
+                      <span class="lp-rm-link-row__line" />
+                      <span class="lp-rm-link-row__b" />
+                    </div>
+                  )}
+                  {m.viz === 'extensions' && (
+                    <div class="lp-rm-grid-ico">
+                      <span />
+                      <span />
+                      <span />
+                      <span class="lp-rm-grid-ico__on" />
+                      <span />
+                    </div>
+                  )}
+                  {m.viz === 'teams' && (
+                    <div class="lp-rm-team">
+                      <span class="lp-rm-team__node lp-rm-team__node--a">A</span>
+                      <span class="lp-rm-team__node lp-rm-team__node--b">B</span>
+                      <span class="lp-rm-team__node lp-rm-team__node--c">C</span>
+                      <span class="lp-rm-team__brain">context</span>
+                    </div>
+                  )}
+                  <p class="lp-rm-viz-cap" data-i18n={milestoneI18nKeys[m.viz].cap}>
+                    {m.vizCaption}
+                  </p>
+                </div>
+              </div>
+            </article>
+          </div>
+        ))
+      }
+    </div>
+  </div>
+</MarketingPageLayout>
+
+<style>
+  .lp-roadmap {
+    padding-bottom: 1rem;
+  }
+
+  .lp-rm-translated {
+    margin: -1rem 0 2rem;
+    font-size: 0.875rem;
+    font-style: italic;
+    color: var(--ol-text3);
+  }
+
+  .lp-rm-translated:empty {
+    display: none;
+  }
+
+  .lp-rm-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1.35rem;
+    margin-top: 0.35rem;
+  }
+
+  .lp-rm-item {
+    --rm-i: 0;
+  }
+
+  .lp-rm-mono {
+    margin: 0;
+    font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+    font-size: 0.75rem;
+    letter-spacing: -0.02em;
+  }
+
+  /* Card */
+  .lp-rm-card {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 0.92fr);
+    background: var(--lp-surface);
+    border: 1px solid var(--ol-border);
+    border-radius: 0.75rem;
+    overflow: hidden;
+    box-shadow: var(--lp-shadow);
+    opacity: 0;
+    transform: translateY(12px);
+    transition:
+      opacity 0.5s ease,
+      transform 0.55s cubic-bezier(0.22, 1, 0.36, 1),
+      box-shadow 0.2s ease,
+      border-color 0.2s ease;
+    transition-delay: calc(var(--rm-i) * 55ms);
+  }
+
+  .lp-rm-card.lp-rm-visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .lp-rm-card:hover {
+    box-shadow: 0 8px 28px rgba(56, 58, 66, 0.08);
+    border-color: color-mix(in oklab, var(--ol-border) 55%, var(--ol-accent));
+  }
+
+  .lp-rm-copy {
+    padding: 1.4rem 1.5rem 1.55rem;
+    min-width: 0;
+  }
+
+  .lp-rm-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem 0.75rem;
+    margin-bottom: 0.65rem;
+  }
+
+  .lp-rm-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.18rem 0.5rem;
+    border-radius: 999px;
+    font-size: 0.65625rem;
+    font-weight: 600;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    font-family: ui-monospace, monospace;
+  }
+
+  .lp-rm-pill--shipped {
+    background: color-mix(in oklab, var(--ol-success) 12%, transparent);
+    color: color-mix(in oklab, var(--ol-success) 88%, var(--ol-text));
+    border: 1px solid color-mix(in oklab, var(--ol-success) 28%, transparent);
+  }
+
+  .lp-rm-pill--progress {
+    background: color-mix(in oklab, var(--ol-accent) 10%, transparent);
+    color: var(--ol-accent);
+    border: 1px solid color-mix(in oklab, var(--ol-accent) 22%, transparent);
+  }
+
+  .lp-rm-pill--planned {
+    background: color-mix(in oklab, var(--ol-text) 5%, transparent);
+    color: var(--ol-text2);
+    border: 1px solid color-mix(in oklab, var(--ol-border) 75%, transparent);
+  }
+
+  .lp-rm-era {
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--ol-text2);
+    letter-spacing: -0.01em;
+  }
+
+  .lp-rm-title {
+    margin: 0 0 0.55rem;
+    font-size: 1.22rem;
+    font-weight: 700;
+    letter-spacing: -0.028em;
+    line-height: 1.2;
+    color: var(--lp-ink);
+  }
+
+  .lp-rm-body {
+    margin: 0;
+    font-size: 0.9375rem;
+    line-height: 1.62;
+    color: var(--ol-text2);
+  }
+
+  /* Viz column — calm panel like main feat previews */
+  .lp-rm-viz {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.35rem 1.25rem;
+    background: var(--ol-bg);
+    border-left: 1px solid var(--ol-border);
+    min-height: 10.5rem;
+  }
+
+  .lp-rm-viz-inner {
+    width: 100%;
+    max-width: 15.5rem;
+    padding: 1.1rem 1.15rem 0.85rem;
+    background: var(--lp-surface);
+    border: 1px solid color-mix(in oklab, var(--ol-border) 88%, transparent);
+    border-radius: 0.625rem;
+    box-shadow: 0 1px 3px rgba(56, 58, 66, 0.04);
+  }
+
+  .lp-rm-viz-cap {
+    margin: 0.85rem 0 0;
+    padding-top: 0.75rem;
+    border-top: 1px solid color-mix(in oklab, var(--ol-border) 65%, transparent);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ol-text3);
+  }
+
+  .lp-rm-stack {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+    margin-bottom: 0.65rem;
+  }
+
+  .lp-rm-chip {
+    font-size: 0.625rem;
+    font-weight: 600;
+    padding: 0.22rem 0.42rem;
+    border-radius: 0.3rem;
+    background: transparent;
+    border: 1px solid var(--ol-border);
+    color: var(--ol-text);
+    font-family: ui-monospace, monospace;
+  }
+
+  .lp-rm-chip--quiet {
+    color: var(--ol-text2);
+    border-color: color-mix(in oklab, var(--ol-border) 80%, transparent);
+  }
+
+  .lp-rm-wl {
+    color: var(--ol-accent);
+    margin-bottom: 0.7rem;
+  }
+
+  .lp-rm-graph-min {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+  }
+
+  .lp-rm-graph-min__dot {
+    width: 0.35rem;
+    height: 0.35rem;
+    border-radius: 50%;
+    background: var(--ol-text3);
+    opacity: 0.4;
+  }
+
+  .lp-rm-graph-min__hub {
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 50%;
+    background: var(--ol-accent);
+    opacity: 0.85;
+  }
+
+  .lp-rm-min-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+  }
+
+  .lp-rm-min-list__li {
+    margin: 0;
+    padding: 0.38rem 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--ol-text);
+    border-radius: 0.35rem;
+    border: 1px solid color-mix(in oklab, var(--ol-border) 90%, transparent);
+    background: color-mix(in oklab, var(--ol-bg) 65%, var(--lp-surface));
+  }
+
+  .lp-rm-min-list__li--accent {
+    color: var(--ol-accent);
+    border-color: color-mix(in oklab, var(--ol-accent) 22%, var(--ol-border));
+    background: color-mix(in oklab, var(--ol-accent) 6%, var(--lp-surface));
+  }
+
+  .lp-rm-min-list__li--muted {
+    color: var(--ol-text2);
+    font-size: 0.71875rem;
+  }
+
+  .lp-rm-bars {
+    display: flex;
+    flex-direction: column;
+    gap: 0.32rem;
+    margin-bottom: 0.7rem;
+  }
+
+  .lp-rm-bar {
+    display: block;
+    height: 3px;
+    border-radius: 2px;
+    background: var(--ol-border);
+    opacity: 0.85;
+  }
+
+  .lp-rm-bar--mid {
+    width: 72%;
+  }
+
+  .lp-rm-bar--short {
+    width: 48%;
+  }
+
+  .lp-rm-tags {
+    display: flex;
+    gap: 0.35rem;
+    flex-wrap: wrap;
+  }
+
+  .lp-rm-tags span {
+    font-size: 0.625rem;
+    font-weight: 600;
+    padding: 0.2rem 0.4rem;
+    border-radius: 0.3rem;
+    color: var(--ol-accent);
+    border: 1px solid color-mix(in oklab, var(--ol-accent) 20%, var(--ol-border));
+    background: color-mix(in oklab, var(--ol-accent) 5%, transparent);
+    font-family: ui-monospace, monospace;
+  }
+
+  .lp-rm-lic__row {
+    display: flex;
+    gap: 0.45rem;
+    margin-bottom: 0.55rem;
+  }
+
+  .lp-rm-lic__badge {
+    flex: 1;
+    text-align: center;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    font-family: ui-monospace, monospace;
+    padding: 0.45rem 0.35rem;
+    border-radius: 0.35rem;
+    border: 1px solid var(--ol-border);
+    color: var(--ol-text);
+  }
+
+  .lp-rm-lic__hint {
+    text-align: center;
+    color: var(--ol-text2);
+    font-size: 0.6875rem;
+  }
+
+  .lp-rm-pro {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .lp-rm-pro__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+  }
+
+  .lp-rm-pro__badge {
+    font-size: 0.625rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 0.25rem 0.45rem;
+    border-radius: 0.3rem;
+    color: var(--ol-accent);
+    border: 1px solid color-mix(in oklab, var(--ol-accent) 24%, var(--ol-border));
+    background: color-mix(in oklab, var(--ol-accent) 8%, var(--lp-surface));
+    font-family: ui-monospace, monospace;
+  }
+
+  .lp-rm-pro__hint {
+    font-size: 0.625rem;
+    font-weight: 600;
+    color: var(--ol-text3);
+  }
+
+  .lp-rm-find {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.42rem 0.55rem;
+    border-radius: 0.4rem;
+    border: 1px solid var(--ol-border);
+    background: color-mix(in oklab, var(--ol-bg) 40%, var(--lp-surface));
+    margin-bottom: 0.45rem;
+  }
+
+  .lp-rm-find__kbd {
+    font-size: 0.625rem;
+    color: var(--ol-text3);
+  }
+
+  .lp-rm-find__ph {
+    font-size: 0.75rem;
+    color: var(--ol-text2);
+    flex: 1;
+    min-width: 0;
+  }
+
+  .lp-rm-find__sub {
+    text-align: center;
+    color: var(--ol-accent);
+    font-size: 0.65625rem;
+    opacity: 0.9;
+  }
+
+  .lp-rm-link-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.45rem;
+    padding: 0.25rem 0;
+  }
+
+  .lp-rm-link-row__a {
+    width: 1.1rem;
+    height: 1.5rem;
+    border-radius: 0.2rem;
+    border: 1.5px solid var(--ol-text3);
+    opacity: 0.5;
+  }
+
+  .lp-rm-link-row__line {
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, var(--ol-border), var(--ol-accent) 50%, var(--ol-border));
+    opacity: 0.55;
+  }
+
+  .lp-rm-link-row__b {
+    width: 1.5rem;
+    height: 0.95rem;
+    border-radius: 0.65rem 0.65rem 0.2rem 0.2rem;
+    border: 1.5px solid var(--ol-text3);
+    opacity: 0.45;
+  }
+
+  .lp-rm-grid-ico {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.25rem;
+    max-width: 6.5rem;
+    margin: 0 auto;
+  }
+
+  .lp-rm-grid-ico span {
+    aspect-ratio: 1;
+    border-radius: 0.2rem;
+    background: var(--ol-border);
+    opacity: 0.35;
+  }
+
+  .lp-rm-grid-ico__on {
+    opacity: 1;
+    background: color-mix(in oklab, var(--ol-accent) 18%, var(--ol-bg));
+    border: 1px solid color-mix(in oklab, var(--ol-accent) 30%, var(--ol-border));
+  }
+
+  .lp-rm-team {
+    position: relative;
+    min-height: 5.5rem;
+  }
+
+  .lp-rm-team__node,
+  .lp-rm-team__brain {
+    position: absolute;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--ol-border);
+    background: var(--ol-bg);
+    color: var(--ol-text2);
+    font-family: ui-monospace, monospace;
+    font-weight: 700;
+  }
+
+  .lp-rm-team__node {
+    width: 1.65rem;
+    height: 1.65rem;
+    border-radius: 50%;
+    font-size: 0.6875rem;
+  }
+
+  .lp-rm-team__node--a {
+    left: 0.2rem;
+    top: 0.2rem;
+  }
+
+  .lp-rm-team__node--b {
+    right: 0.25rem;
+    top: 0.55rem;
+  }
+
+  .lp-rm-team__node--c {
+    left: 1.2rem;
+    bottom: 0.1rem;
+  }
+
+  .lp-rm-team__brain {
+    left: 50%;
+    top: 50%;
+    min-width: 5.4rem;
+    height: 2rem;
+    padding: 0 0.65rem;
+    border-radius: 999px;
+    color: var(--ol-accent);
+    background: var(--ol-accent-dim);
+    border-color: color-mix(in oklab, var(--ol-accent) 30%, var(--ol-border));
+    font-size: 0.6875rem;
+    transform: translate(-50%, -50%);
+  }
+
+  @media (max-width: 52rem) {
+    .lp-rm-card {
+      grid-template-columns: 1fr;
+    }
+
+    .lp-rm-viz {
+      border-left: none;
+      border-top: 1px solid var(--ol-border);
+      min-height: auto;
+      padding: 1.1rem 1rem 1.25rem;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .lp-rm-card {
+      opacity: 1;
+      transform: none;
+      transition: none;
+    }
+  }
+</style>
+
+<script is:inline>
+  (function () {
+    if (typeof window === 'undefined' || typeof document === 'undefined') return;
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const cards = document.querySelectorAll('.lp-rm-card');
+    if (!cards.length) return;
+    if (reduce) {
+      cards.forEach((c) => c.classList.add('lp-rm-visible'));
+      return;
+    }
+    const io = new IntersectionObserver(
+      (entries) => {
+        for (const e of entries) {
+          if (e.isIntersecting) {
+            e.target.classList.add('lp-rm-visible');
+            io.unobserve(e.target);
+          }
+        }
+      },
+      { threshold: 0.1, rootMargin: '0px 0px -7% 0px' },
+    );
+    cards.forEach((c) => io.observe(c));
+  })();
+</script>

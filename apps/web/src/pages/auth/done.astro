@@ -1,0 +1,34 @@
+---
+import BaseLayout from '@/layouts/base_layout.astro';
+---
+
+<BaseLayout title="Completing sign in | Momo" description="Completing sign in.">
+  <main class="auth-shell">
+    <a class="lp-brand auth-brand-slot" href="/" aria-label="Momo home">
+      <img class="lp-brand-logo" src="/logo.png" alt="" width="52" height="52" decoding="async" />
+      <span class="lp-brand-tagline-text">momo</span>
+    </a>
+    <section class="auth-card" aria-labelledby="auth-title">
+      <div class="auth-heading">
+        <p class="eyebrow">SIGN IN</p>
+        <h1 id="auth-title">Completing sign in</h1>
+        <p>One moment.</p>
+      </div>
+    </section>
+  </main>
+</BaseLayout>
+
+<script>
+  const params = new URLSearchParams(window.location.search);
+  const success = params.get('success') === 'true';
+  const error = params.get('error');
+
+  if (success) {
+    const redirect = window.sessionStorage.getItem('oauth_redirect') || '/dashboard';
+    window.sessionStorage.removeItem('oauth_redirect');
+    window.location.replace(redirect);
+  } else {
+    const suffix = error ? `?error=${encodeURIComponent(error)}` : '';
+    window.location.replace(`/auth/signin${suffix}`);
+  }
+</script>

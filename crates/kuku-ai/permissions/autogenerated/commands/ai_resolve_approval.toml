@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-ai-resolve-approval"
+description = "Enables the ai_resolve_approval command without any pre-configured scope."
+commands.allow = ["ai_resolve_approval"]
+
+[[permission]]
+identifier = "deny-ai-resolve-approval"
+description = "Denies the ai_resolve_approval command without any pre-configured scope."
+commands.deny = ["ai_resolve_approval"]

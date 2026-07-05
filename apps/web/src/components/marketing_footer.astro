@@ -1,0 +1,216 @@
+---
+import { externalLinks } from '@/config/links';
+
+const year = 2026;
+---
+
+<footer class="mf-footer">
+  <div class="mf-watermark" aria-hidden="true">momo</div>
+  <div class="mf-inner">
+    <div class="mf-top">
+      <p class="mf-entity">Momo</p>
+      <address class="mf-address">
+        544 US-9, Fishkill<br />
+        NY 12524, United States
+      </address>
+    </div>
+
+    <hr class="mf-rule" />
+
+    <div class="mf-bottom">
+      <p class="mf-copy" lang="en">© {year} Momo All rights reserved.</p>
+      <nav class="mf-legal" aria-label="Legal">
+        <a class="mf-legal-strong" href="/terms" data-i18n="footer.terms">Terms of Service</a>
+        <a class="mf-legal-plain" href="/privacy" data-i18n="footer.privacy">Privacy Policy</a>
+      </nav>
+      <div class="mf-theme-row">
+        <button class="theme-toggle" type="button" data-theme-toggle aria-label="Toggle theme">
+          <span class="theme-toggle__icon" aria-hidden="true"></span>
+          <span class="theme-toggle__label" data-theme-toggle-label>Light</span>
+        </button>
+      </div>
+      <nav class="mf-secondary" aria-label="Site links">
+        <a href="/roadmap" data-i18n="footer.roadmap">Roadmap</a>
+        <a href="/pricing" data-i18n="footer.pricing">Pricing</a>
+        <a href="/blog" data-i18n="footer.blog">Blog</a>
+        <a href="/changelog" data-i18n="footer.changelog">Changelog</a>
+        <a href="/auth/signin" data-i18n="footer.signin">Sign in</a>
+        <a href={externalLinks.github} target="_blank" rel="noreferrer noopener">GitHub</a>
+      </nav>
+    </div>
+  </div>
+</footer>
+
+<script is:inline>
+  (() => {
+    const toggle = document.querySelector('[data-theme-toggle]');
+    if (!toggle) return;
+    const label = toggle.querySelector('[data-theme-toggle-label]');
+    const sync = () => {
+      const theme =
+        document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+      toggle.setAttribute('data-theme', theme);
+      toggle.setAttribute(
+        'aria-label',
+        theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme',
+      );
+      if (label) label.textContent = theme === 'dark' ? 'Dark' : 'Light';
+    };
+    toggle.addEventListener('click', () => {
+      const current =
+        document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+      const next = current === 'dark' ? 'light' : 'dark';
+      if (typeof window.__kukuSetTheme === 'function') window.__kukuSetTheme(next, true);
+    });
+    window.addEventListener('kuku-theme-change', sync);
+    sync();
+  })();
+</script>
+
+<style>
+  .mf-footer {
+    position: relative;
+    margin: 0;
+    padding: 3rem 2rem 2.75rem;
+    background: var(--ol-bg);
+    border-top: none;
+    overflow: hidden;
+  }
+
+  .mf-watermark {
+    position: absolute;
+    left: 50%;
+    bottom: -0.2em;
+    transform: translateX(-50%);
+    z-index: 0;
+    margin: 0;
+    font-size: min(26vw, 14rem);
+    font-weight: 700;
+    letter-spacing: -0.06em;
+    line-height: 0.72;
+    color: var(--ol-text);
+    opacity: 0.045;
+    white-space: nowrap;
+    pointer-events: none;
+    user-select: none;
+  }
+
+  .mf-inner {
+    position: relative;
+    z-index: 1;
+    max-width: 64rem;
+    margin: 0 auto;
+    text-align: left;
+  }
+
+  .mf-top {
+    padding: 0;
+  }
+
+  .mf-entity {
+    margin: 0 0 0.4rem;
+    font-size: 1rem;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    color: var(--ol-text);
+    line-height: 1.35;
+  }
+
+  .mf-address {
+    margin: 0;
+    font-size: 0.875rem;
+    font-weight: 500;
+    line-height: 1.55;
+    font-style: normal;
+    color: var(--lp-muted);
+  }
+
+  .mf-rule {
+    margin: 1.35rem 0 1.35rem;
+    height: 0;
+    border: none;
+    border-top: 1px solid color-mix(in oklab, var(--ol-border) 38%, transparent);
+  }
+
+  .mf-bottom {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.85rem;
+  }
+
+  .mf-copy {
+    margin: 0;
+    font-size: 0.8125rem;
+    font-weight: 400;
+    line-height: 1.45;
+    color: var(--lp-muted);
+  }
+
+  .mf-legal {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.5rem 1.25rem;
+  }
+
+  .mf-legal a {
+    font-size: 0.875rem;
+    text-decoration: none;
+    color: var(--ol-text);
+    transition: opacity 0.15s ease;
+  }
+
+  .mf-legal a:hover {
+    opacity: 0.72;
+  }
+
+  .mf-legal-strong {
+    font-weight: 700;
+  }
+
+  .mf-legal-plain {
+    font-weight: 400;
+  }
+
+  .mf-secondary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem 1rem;
+    margin-top: 0.1rem;
+  }
+
+  .mf-secondary a {
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--lp-muted);
+    text-decoration: none;
+    transition: color 0.15s ease;
+  }
+
+  .mf-secondary a:hover {
+    color: var(--ol-text);
+  }
+
+  .mf-theme-row {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    margin: 0.15rem 0 0.1rem;
+  }
+
+  @media (max-width: 40rem) {
+    .mf-footer {
+      padding: 2.5rem 1.25rem 2.5rem;
+    }
+
+    .mf-watermark {
+      font-size: min(36vw, 11rem);
+      opacity: 0.038;
+    }
+
+    .mf-theme-row {
+      justify-content: center;
+    }
+  }
+</style>

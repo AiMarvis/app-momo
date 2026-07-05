@@ -1,0 +1,213 @@
+---
+import MarketingPageLayout from '@/layouts/marketing_page_layout.astro';
+import { getCollection, render } from 'astro:content';
+import { SUPPORTED_LANGS, type SupportedLang } from '@/content.config';
+
+const rawEntries = await getCollection('changelog');
+
+// Group entries by date — each date has one entry per supported language.
+const byDate = new Map<string, typeof rawEntries>();
+for (const entry of rawEntries) {
+  const existing = byDate.get(entry.data.date) ?? [];
+  existing.push(entry);
+  byDate.set(entry.data.date, existing);
+}
+
+const sortedPairs = [...byDate.entries()].toSorted(([a], [b]) => (a < b ? 1 : -1));
+
+interface Group {
+  date: string;
+  variants: {
+    lang: SupportedLang;
+    label: string;
+    Content: Awaited<ReturnType<typeof render>>['Content'];
+  }[];
+}
+
+const groups: Group[] = [];
+for (const [date, entries] of sortedPairs) {
+  const byLang = new Map<SupportedLang, (typeof entries)[number]>();
+  for (const e of entries) byLang.set(e.data.lang, e);
+  const anchor = byLang.get('en') ?? entries[0];
+  const variants: Group['variants'] = [];
+  for (const lang of SUPPORTED_LANGS) {
+    const entry = byLang.get(lang) ?? anchor;
+    const { Content } = await render(entry);
+    variants.push({ lang, label: entry.data.label, Content });
+  }
+  groups.push({ date, variants });
+}
+
+const dateFmt = new Intl.DateTimeFormat('en-US', {
+  month: 'long',
+  day: 'numeric',
+  year: 'numeric',
+});
+---
+
+<MarketingPageLayout
+  title="Changelog | Momo"
+  description="Recent changes, fixes, and new capabilities shipped in Momo preview builds."
+  wide
+>
+  <div class="lp-cl">
+    <header class="lp-cl__head">
+      <h1 class="lp-cl__title" data-i18n="cl.title">Changelog</h1>
+      <p class="lp-cl__sub" data-i18n="cl.sub">
+        Preview builds on the road to 1.0. We ship often and keep notes here.
+      </p>
+    </header>
+
+    <ol class="lp-cl__list">
+      {
+        groups.map((group) => (
+          <li class="lp-cl-entry">
+            <div class="lp-cl-entry__meta">
+              <time class="lp-cl-entry__date" datetime={group.date}>
+                {dateFmt.format(new Date(group.date + 'T12:00:00'))}
+              </time>
+              <span class="lp-cl-entry__label">{group.variants[0]?.label}</span>
+            </div>
+            {group.variants.map((v) => (
+              <div class="lp-cl-entry__body" data-lang-block={v.lang}>
+                <v.Content />
+              </div>
+            ))}
+          </li>
+        ))
+      }
+    </ol>
+  </div>
+</MarketingPageLayout>
+
+<style>
+  .lp-cl {
+    --lp-cl-border: var(--ol-border);
+    --lp-cl-ink: var(--ol-text);
+    --lp-cl-muted: var(--ol-text2);
+    --lp-cl-faint: var(--ol-text3);
+
+    max-width: 42rem;
+    margin: 0 auto;
+    padding-bottom: 2rem;
+  }
+
+  .lp-cl__head {
+    text-align: left;
+    margin-bottom: 2.5rem;
+  }
+
+  .lp-cl__title {
+    margin: 0 0 0.5rem;
+    font-size: clamp(1.875rem, 4.5vw, 2.375rem);
+    font-weight: 700;
+    letter-spacing: -0.035em;
+    color: var(--lp-cl-ink);
+  }
+
+  .lp-cl__sub {
+    margin: 0;
+    font-size: 1.0625rem;
+    line-height: 1.55;
+    color: var(--lp-cl-muted);
+  }
+
+  .lp-cl__list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2.25rem;
+  }
+
+  .lp-cl-entry {
+    position: relative;
+    padding: 1.35rem 1.35rem 1.5rem;
+    background: var(--lp-surface);
+    border: 1px solid var(--lp-cl-border);
+    border-radius: 1rem;
+    transition: border-color 0.22s ease;
+  }
+
+  .lp-cl-entry:hover {
+    border-color: color-mix(in oklab, var(--lp-cl-border) 82%, var(--lp-cl-ink));
+  }
+
+  .lp-cl-entry__meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.5rem 0.8rem;
+    margin-bottom: 0.9rem;
+  }
+
+  .lp-cl-entry__date {
+    font-size: 0.9375rem;
+    font-weight: 600;
+    letter-spacing: -0.015em;
+    color: var(--lp-cl-ink);
+  }
+
+  .lp-cl-entry__label {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.18rem 0.5rem;
+    border-radius: 999px;
+    font-size: 0.65625rem;
+    font-weight: 600;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+    background: color-mix(in oklab, var(--ol-accent) 10%, transparent);
+    color: var(--ol-accent);
+    border: 1px solid color-mix(in oklab, var(--ol-accent) 22%, transparent);
+  }
+
+  .lp-cl-entry__body :global(ul) {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+  }
+
+  .lp-cl-entry__body :global(li) {
+    position: relative;
+    padding-left: 1.1rem;
+    font-size: 0.9375rem;
+    line-height: 1.55;
+    color: var(--lp-cl-muted);
+  }
+
+  .lp-cl-entry__body :global(li)::before {
+    content: '';
+    position: absolute;
+    left: 0.15rem;
+    top: 0.65rem;
+    width: 0.3rem;
+    height: 0.3rem;
+    border-radius: 999px;
+    background: var(--lp-cl-faint);
+  }
+
+  .lp-cl-entry__body :global(code) {
+    font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+    font-size: 0.8125rem;
+    padding: 0.08rem 0.32rem;
+    border-radius: 0.25rem;
+    background: color-mix(in oklab, var(--ol-border) 45%, transparent);
+    color: var(--lp-cl-ink);
+  }
+
+  @media (max-width: 40rem) {
+    .lp-cl__list {
+      gap: 1.75rem;
+    }
+
+    .lp-cl-entry {
+      padding: 1.15rem 1.1rem 1.35rem;
+    }
+  }
+</style>

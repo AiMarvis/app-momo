@@ -1,0 +1,171 @@
+// =============================================================================
+// kuku.ai.v1 - AI service
+// =============================================================================
+// Provides server-backed AI completion for desktop clients.
+//
+// The desktop app can keep using BYOK providers locally, or switch to the
+// authenticated remote provider to call this service with the user's server
+// session token.
+// =============================================================================
+
+edition = "2023";
+
+package kuku.ai.v1;
+
+import "buf/validate/validate.proto";
+import "google/protobuf/struct.proto";
+
+option go_package = "github.com/kuku-mom/kuku/packages/contract/gen/go/kuku/ai/v1;aiv1";
+
+// ---------------------------------------------------------------------------
+// AIService - server-backed AI service
+// ---------------------------------------------------------------------------
+service AIService {
+  // Streams a single AI turn. Emits text deltas as they arrive, followed by
+  // buffered tool calls (if any), then a terminal Finished event. The stream
+  // closes at the end of the turn; on FINISH_REASON_TOOL_CALLS the caller
+  // executes the tools and issues a follow-up Complete call with the tool
+  // results appended to `messages`. The server never holds a connection
+  // across tool-call rounds.
+  // - Requires authentication.
+  rpc Complete(CompleteRequest) returns (stream CompleteResponse);
+}
+
+// ConversationMode controls the completion behavior.
+enum ConversationMode {
+  CONVERSATION_MODE_UNSPECIFIED = 0;
+  CONVERSATION_MODE_AGENT = 1;
+  CONVERSATION_MODE_ASK = 2;
+  CONVERSATION_MODE_INLINE = 3;
+}
+
+// ChatMessageRole maps the desktop conversation history to the upstream model.
+enum ChatMessageRole {
+  CHAT_MESSAGE_ROLE_UNSPECIFIED = 0;
+  CHAT_MESSAGE_ROLE_SYSTEM = 1;
+  CHAT_MESSAGE_ROLE_USER = 2;
+  CHAT_MESSAGE_ROLE_ASSISTANT = 3;
+  CHAT_MESSAGE_ROLE_TOOL_RESULT = 4;
+}
+
+// FinishReason describes why the remote model turn ended.
+enum FinishReason {
+  FINISH_REASON_UNSPECIFIED = 0;
+  FINISH_REASON_STOP = 1;
+  FINISH_REASON_TOOL_CALLS = 2;
+}
+
+// CompleteRequest is a single-turn completion request.
+message CompleteRequest {
+  ConversationMode mode = 1;
+
+  string message = 2 [(buf.validate.field).string.min_len = 1];
+
+  repeated string context_files = 3;
+
+  string model = 4;
+
+  repeated ChatMessage messages = 5;
+
+  repeated ToolDescriptor tools = 6;
+
+  string system_prompt = 7;
+}
+
+// CompleteResponse is one increment of a Complete turn; the stream emits
+// many of these per call. Exactly one FinishedEvent variant is the terminal
+// event.
+//
+// Event order on a tool-using turn:
+//   text_delta*  →  tool_calls?  →  finished(TOOL_CALLS)
+// Event order on a plain-text turn:
+//   text_delta*  →  finished(STOP)
+//
+// Tool calls are buffered server-side until the upstream stream ends, then
+// emitted as a single ToolCallsEvent right before Finished. This matches
+// what the desktop runtime consumes today (CompletionEvent::ToolCalls takes
+// a Vec<ModelToolCall>).
+message CompleteResponse {
+  oneof event {
+    TextDeltaEvent text_delta = 1;
+    ToolCallsEvent tool_calls = 2;
+    FinishedEvent finished = 3;
+  }
+}
+
+// TextDeltaEvent is a chunk of assistant text. Emit as soon as received.
+message TextDeltaEvent {
+  string text = 1;
+}
+
+// ToolCallsEvent is the buffered set of tool calls produced during the turn.
+message ToolCallsEvent {
+  repeated ModelToolCall tool_calls = 1;
+}
+
+// FinishedEvent terminates the stream. `finish_reason` is derived server-
+// side (TOOL_CALLS if any tool calls were produced, otherwise STOP) — the
+// upstream provider's native finish enum is not forwarded. `usage` is the
+// last-observed usage metadata across the upstream stream.
+message FinishedEvent {
+  FinishReason finish_reason = 1;
+
+  TokenUsage usage = 2;
+}
+
+// TokenUsage reports provider token usage when the upstream model exposes it.
+message TokenUsage {
+  uint64 input_tokens = 1;
+  uint64 output_tokens = 2;
+  uint64 total_tokens = 3;
+  uint64 cached_input_tokens = 4;
+}
+
+// ChatMessage carries the desktop-side conversation history.
+message ChatMessage {
+  ChatMessageRole role = 1;
+
+  string content = 2;
+
+  repeated ModelToolCall tool_calls = 3;
+
+  string call_id = 4;
+
+  string tool_name = 5;
+
+  bool is_error = 6;
+
+  string tool_call_id = 7;
+
+  string provider_call_id = 8;
+}
+
+// ToolDescriptor exposes a desktop tool to the server-side model.
+message ToolDescriptor {
+  string name = 1 [(buf.validate.field).string.min_len = 1];
+
+  string description = 2;
+
+  google.protobuf.Struct parameters = 3;
+}
+
+// ModelToolCall is a model-requested function call that must be executed by
+// the desktop runtime.
+message ModelToolCall {
+  string call_id = 1 [(buf.validate.field).string.min_len = 1];
+
+  string tool_name = 2 [(buf.validate.field).string.min_len = 1];
+
+  google.protobuf.Struct arguments = 3;
+
+  // Gemini's ThoughtSignature is opaque binary state the model uses to
+  // resume reasoning across tool-call rounds. Using `bytes` avoids the
+  // UTF-8 validation proto3 requires on `string` fields — Gemini's
+  // signatures aren't guaranteed to be valid UTF-8 and marshaling them
+  // as strings fails on the server.
+  bytes signature = 4;
+
+  string tool_call_id = 5;
+
+  string provider_call_id = 6;
+}

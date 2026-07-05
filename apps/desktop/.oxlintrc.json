@@ -1,0 +1,74 @@
+{
+  "$schema": "../..//node_modules/oxlint/configuration_schema.json",
+  "extends": ["../../.oxlintrc.json"],
+  "options": {
+    "typeAware": true,
+    "typeCheck": true
+  },
+  "ignorePatterns": ["**/dist"],
+  "overrides": [
+    {
+      "files": ["**/*.{js,cjs,mjs,ts,tsx,cts,mts}"],
+      "jsPlugins": ["eslint-plugin-better-tailwindcss"],
+      "rules": {
+        // ── better-tailwindcss recommended (stylistic: warn) ──
+        "better-tailwindcss/enforce-consistent-line-wrapping": "off",
+        "better-tailwindcss/enforce-consistent-class-order": "warn",
+        // ── conflict with 'enforce-canonical-classes'
+        "better-tailwindcss/enforce-consistent-variable-syntax": "off",
+        "better-tailwindcss/enforce-consistent-important-position": "off",
+        "better-tailwindcss/enforce-shorthand-classes": "off",
+        // ── end: conflict with 'enforce-canonical-classes'
+        "better-tailwindcss/enforce-canonical-classes": "warn",
+        "better-tailwindcss/no-duplicate-classes": "error",
+        "better-tailwindcss/no-deprecated-classes": "warn",
+        "better-tailwindcss/no-unnecessary-whitespace": "warn",
+        // ── better-tailwindcss recommended (correctness: error) ──
+        "better-tailwindcss/no-unknown-classes": [
+          "error",
+          {
+            "ignore": [
+              "^tab-bar(-tabs)?$",
+              "^kuku-task-checkbox(?:__input|__control)?$",
+              "^kuku-markdown-task-list$",
+              "^kuku-markdown-task-item(?:-content)?$",
+              "^kuku-md-code-fence$",
+              "^kuku-ai-composer-textarea$",
+              "^kuku-chat-(?:fade-dots|thinking-text)$",
+              "^kuku-ai-tools-(?:details|chevron)$",
+              "^kuku-cm-(?:separator|hairline)$",
+              "^kuku-resize-grip(?:--col|--row)?$"
+            ]
+          }
+        ],
+        "better-tailwindcss/no-conflicting-classes": "error",
+        "better-tailwindcss/no-restricted-classes": [
+          "error",
+          {
+            "restrict": [
+              {
+                "message": "Do not use px units. Use rem instead.",
+                "pattern": "^((?:[a-zA-Z0-9:/_-]*:)?[a-zA-Z0-9_/-]*-)\\[(\\d+(?:\\.\\d+)?)px\\](\\/[0-9]{1,3})?$"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "rules": {
+    "unicorn/no-array-sort": "off"
+  },
+  "settings": {
+    "better-tailwindcss": {
+      "entryPoint": "src/index.css",
+      "rootFontSize": 16
+    }
+  },
+  "env": {
+    "builtin": true,
+    "browser": true,
+    "es2022": true,
+    "node": true
+  }
+}

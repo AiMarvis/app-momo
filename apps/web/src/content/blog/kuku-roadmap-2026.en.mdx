@@ -1,0 +1,121 @@
+---
+slug: momo-roadmap-2026
+lang: en
+date: "2026-02-06"
+title: "Momo Roadmap: The Journey Toward Complete Freedom"
+excerpt: "Product Hunt #2 taught us what users want: complete control. Here's our answer."
+author: Gyeongtaek Kim
+image: /blog-2.webp
+imageAlt: Illustration of a character exploring a forest path
+---
+
+_Translated from the Korean original using Claude Opus 4.7._
+
+Thanks to your overwhelming interest and support, Momo Editor reached [#2 on Product Hunt](https://www.producthunt.com/products/kuku). What started as a personal project to meet my own needs has evolved into something much bigger, driven solely by our commitment to transparent code and a privacy-first mission.
+
+## The Wake-Up Call
+
+When we launched on Product Hunt, we shipped with features we were proud of: a Tauri-based local editor with bidirectional \[\[wikilinks\]\], an AI agent powered by Gemini, local speech-to-text via Whisper, and a graph view. All running locally on your Mac.
+
+But the response wasn't just about the features. The comments, the upvotes, the conversations — they all pointed to something deeper. People weren't just excited about another note-taking app. They were hungry for **control**.
+
+- _"Will you open source the code?"_
+- _"Can I use my own AI key?"_
+- _"How do I verify privacy?"_
+
+The message was clear: users don't want to be locked into another platform. They want tools they can trust, inspect, and control.
+
+So we made a decision.
+
+## The Decision: Complete Transparency
+
+We're not just open sourcing the client. We're open sourcing **everything**.
+
+- **Desktop Client**: MIT-licensed. Use it, fork it, build on it.
+- **Server Infrastructure**: AGPL-licensed. Sync servers, AI processing backends, database schemas, deployment configs — all on GitHub.
+
+No black boxes. No proprietary lock-in. You can audit exactly how your data flows through our systems, run your own infrastructure, or contribute improvements back to the community.
+
+But open source alone isn't enough. We're also rebuilding our foundation.
+
+## The Rebuild: Starting Fresh
+
+After shipping those features, we realized we were building on the wrong foundation. React and Tiptap served us well for the MVP, but to build a truly extensible platform, we needed to go deeper.
+
+We're migrating the entire editor core to **SolidJS** and **pure ProseMirror**. Why?
+
+- Pure ProseMirror means no proprietary wrappers — anyone can extend the editor without license concerns
+- SolidJS's fine-grained reactivity gives us the performance we need
+- A clean foundation enables the plugin architecture we've always wanted
+
+This is a complete rewrite from the ground up. It will take time. But it's the right foundation for everything we're building next.
+
+## Three Ways Forward
+
+Here's where it gets interesting. We're not forcing you into a single path. You get to choose:
+
+### 1. Self-Host Everything
+
+Deploy our server code on your own hardware. Run it on a home server, NAS, or $5/month VPS. We provide Docker Compose files and deployment guides. Your data never leaves infrastructure you control.
+
+### 2. Bring Your Own (BYO)
+
+Already have cloud services you trust? Connect your own S3 bucket, OpenAI API key, or local LLM (Ollama). Momo becomes the interface layer on top of services you already use.
+
+### 3. Buy Convenience
+
+Don't want to manage servers? Subscribe to Momo managed service — our managed service. We handle infrastructure, updates, and backups. You pay for convenience, but the code is identical to what you can self-host.
+
+**And here's the promise**: We will never hold your data hostage. Start with Momo managed service today, migrate to self-hosting tomorrow. Export everything, anytime.
+
+## What's Next
+
+### 1.0 Open-Source Launch
+
+The first open-source release with the complete rewrite on SolidJS and ProseMirror. This includes:
+
+- **MeetingNote**: Integrated lecture recording with local Whisper transcription
+- **GitHub Sync**: Free version control by syncing your vault to a GitHub repository
+- **Homebrew Distribution**: One-command installation for Mac users
+- **Full Server Code**: Self-hosting guides and Docker configurations
+
+### Enhanced Search & Graph
+
+Semantic understanding powered by local embedding models:
+
+- **Local Embeddings**: Run embedding models (like nomic-embed-text) entirely on-device using Ollama or ONNX Runtime. No API calls, no internet required.
+- **Hybrid Search**: Combine keyword search (BM25) with semantic search (vector similarity) to find notes by meaning, not just exact words.
+- **Smart Graph View**: Visualize connections between notes based on semantic similarity, not just explicit links. Discover related notes you didn't know were connected.
+- **Contextual Recommendations**: Get suggestions for related notes as you write, based on the semantic content of your current document.
+
+All of this runs locally. Your notes never leave your machine.
+
+### Sync & Mobile
+
+Cross-device synchronization and mobile companion:
+
+- **Zero-Knowledge Sync**: End-to-end encrypted synchronization through Momo managed service, self-hosted servers, or your own S3 bucket. The server only stores encrypted blobs it can never read.
+- **Mobile Apps**: Native iOS and Android companions for quick capture and reading on the go. Full editing capabilities on mobile devices.
+- **Conflict Resolution**: Smart merging when you edit the same note on multiple devices.
+- **Offline-First**: Everything works offline. Sync happens in the background when you're connected.
+
+### Extension Ecosystem
+
+Opening the platform for community innovation:
+
+- **Plugin SDK**: Public API for building extensions with full documentation and TypeScript definitions.
+- **Plugin Marketplace**: Discover and install community plugins directly from within Momo.
+- **Real-Time Collaboration**: Extensions like Y.js-based collaborative editing for shared workspaces become possible with the plugin system.
+- **Web Clipper**: Browser extension for capturing content from any website.
+- **AI Memory Sharing**: Allow other AI assistants to access and reference your knowledge base through a secure, local API. Your notes become long-term memory for any AI tool you use.
+
+## Values That Won't Change
+
+We continue to move forward adhering to these core principles:
+
+- **Local-first** — Your files are yours. Plain .md, always accessible, never locked in.
+- **Privacy extreme** — No forced account creation, no unauthorized data collection, no telemetry without explicit opt-in.
+- **Transparent ecosystem** — Every line of code is on GitHub. Following the open-source release, we will expand through plugins and mobile synchronization.
+- **Freedom of choice** — Use our cloud, self-host, or bring your own services. We build the tools, but we give the control to you.
+
+Check out the full [roadmap page](/roadmap) for a visual timeline. And if you haven't tried Momo yet, it's free to [download](/).

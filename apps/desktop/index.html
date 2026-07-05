@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en" style="background-color: #1a1a1a; color-scheme: dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#1a1a1a" />
+    <script>
+      (() => {
+        const BG = { dark: "#1a1a1a", light: "#ffffff" };
+
+        try {
+          const raw = localStorage.getItem("settings-cache");
+          if (!raw) return;
+
+          const cache = JSON.parse(raw);
+          const pref = cache?.theme;
+          const systemDark = window.matchMedia?.("(prefers-color-scheme: dark)")?.matches ?? true;
+          const theme =
+            pref === "light" ? "light" : pref === "dark" ? "dark" : systemDark ? "dark" : "light";
+          const bg = BG[theme];
+
+          if (theme === "light") {
+            document.documentElement.setAttribute("data-theme", "light");
+          } else {
+            document.documentElement.removeAttribute("data-theme");
+          }
+
+          document.documentElement.style.backgroundColor = bg;
+          document.documentElement.style.colorScheme = theme;
+
+          if (typeof cache?.fontUi === "string" && cache.fontUi) {
+            document.documentElement.style.setProperty("--font-ui", `"Emoji", "${cache.fontUi}"`);
+          }
+          if (typeof cache?.fontEditor === "string" && cache.fontEditor) {
+            document.documentElement.style.setProperty(
+              "--font-editor",
+              `"Emoji", "${cache.fontEditor}"`,
+            );
+          }
+          if (typeof cache?.fontMono === "string" && cache.fontMono) {
+            document.documentElement.style.setProperty(
+              "--font-mono",
+              `"Emoji", "${cache.fontMono}"`,
+            );
+          }
+
+          const meta = document.querySelector('meta[name="theme-color"]');
+          if (meta) meta.setAttribute("content", bg);
+        } catch {}
+      })();
+    </script>
+    <title>Momo</title>
+    <style>
+      html,
+      body,
+      #root {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        background-color: #1a1a1a;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/index.tsx"></script>
+  </body>
+</html>

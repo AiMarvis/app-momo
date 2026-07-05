@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-ai-submit-proxy-tool-result"
+description = "Enables the ai_submit_proxy_tool_result command without any pre-configured scope."
+commands.allow = ["ai_submit_proxy_tool_result"]
+
+[[permission]]
+identifier = "deny-ai-submit-proxy-tool-result"
+description = "Denies the ai_submit_proxy_tool_result command without any pre-configured scope."
+commands.deny = ["ai_submit_proxy_tool_result"]

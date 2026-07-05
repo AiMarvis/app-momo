@@ -1,0 +1,1289 @@
+---
+import BaseLayout from '@/layouts/base_layout.astro';
+import LandingNav from '@/components/landing_nav.astro';
+import MarketingFooter from '@/components/marketing_footer.astro';
+import { externalLinks, resolveDownloadHref } from '@/config/links';
+
+const pathname = Astro.url.pathname;
+const downloadHref = resolveDownloadHref(pathname);
+---
+
+<BaseLayout
+  title="Momo — Local-first AI Markdown workspace for macOS"
+  description="A fast, local-first Markdown knowledge base for macOS. Write with wikilinks, backlinks, graph view, and AI editing with reviewable diffs. Offline-first, open source, no lock-in."
+>
+  <div class="lp-root">
+    <!-- NAV -->
+    <LandingNav pathname={pathname} />
+
+    <!-- HERO -->
+    <section class="lp-hero" aria-labelledby="hero-heading">
+      <div class="lp-hero-inner">
+        <a
+          class="lp-ph-badge"
+          href={externalLinks.github}
+          target="_blank"
+          rel="noreferrer noopener"
+          aria-label="Momo source code"
+        >
+          <span class="lp-ph-mark" aria-hidden="true"><span class="lp-ph-letter">M</span></span>
+          <span class="lp-ph-copy">Open source local-first workspace</span>
+          <svg
+            class="lp-ph-arrow"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            aria-hidden="true"
+          >
+            <path d="M7 17L17 7" stroke-linecap="round"></path>
+            <path d="M9 7h8v8" stroke-linecap="round" stroke-linejoin="round"></path>
+          </svg>
+        </a>
+        <h1 class="lp-hero-heading" id="hero-heading">Connect your thoughts.</h1>
+        <p class="lp-hero-sub">
+          <span class="lp-hero-sub-line lp-hero-sub-line--desktop" data-i18n="hero.sub1">
+            Native, local-first Markdown on macOS — Tauri, not Electron. Wikilinks, backlinks, and
+            graph view on plain files.
+          </span>
+          <span class="lp-hero-sub-line lp-hero-sub-line--desktop" data-i18n="hero.sub2">
+            AI searches, edits, and links your vault with reviewable, Cursor-style diffs. Light,
+            offline-first — no cloud, no lock-in.
+          </span>
+          <span class="lp-hero-sub-line lp-hero-sub-line--mobile" data-i18n="hero.mobile_sub">
+            Native Markdown for macOS. AI edits your vault. Offline-first, no lock-in.
+          </span>
+        </p>
+        <div class="lp-hero-actions" id="download">
+          <a class="lp-cta-outline" href="#features" data-i18n="hero.see_how">See how it works</a>
+          <details class="lp-hero-download">
+            <summary
+              class="lp-cta-filled lp-cta-filled--download"
+              aria-label="Download — choose platform"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"
+                ><path
+                  d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"
+                ></path></svg
+              >
+              <span data-i18n="nav.download">Download</span>
+              <svg
+                class="lp-chevron lp-chevron--hero-dl"
+                width="12"
+                height="12"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2.5"
+                aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg
+              >
+            </summary>
+            <div
+              class="lp-download-panel lp-download-panel--hero"
+              role="group"
+              aria-label="Download by platform"
+            >
+              <a class="lp-download-row lp-download-row--link" href={downloadHref}>macOS</a>
+              <p class="lp-download-row lp-download-row--soon">
+                Windows <span class="lp-download-soon" data-i18n="nav.coming_soon">Coming soon</span
+                >
+              </p>
+              <p class="lp-download-row lp-download-row--soon">
+                Linux <span class="lp-download-soon" data-i18n="nav.coming_soon">Coming soon</span>
+              </p>
+            </div>
+          </details>
+        </div>
+        <a
+          class="lp-yc-badge"
+          href={externalLinks.github}
+          target="_blank"
+          rel="noreferrer noopener"
+          aria-label="Momo GitHub repository"
+        >
+          <span class="lp-gh-badge" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="currentColor" role="img" aria-label="GitHub logo">
+              <path
+                d="M12 2C6.48 2 2 6.58 2 12.23c0 4.52 2.87 8.35 6.84 9.7.5.1.68-.22.68-.49 0-.24-.01-.88-.01-1.73-2.78.62-3.37-1.37-3.37-1.37-.45-1.18-1.11-1.49-1.11-1.49-.91-.64.07-.63.07-.63 1 .07 1.53 1.06 1.53 1.06.9 1.58 2.36 1.12 2.94.86.09-.67.35-1.12.64-1.38-2.22-.26-4.56-1.14-4.56-5.05 0-1.12.39-2.03 1.03-2.75-.11-.26-.45-1.31.1-2.73 0 0 .84-.27 2.75 1.05A9.34 9.34 0 0 1 12 6.86a9.3 9.3 0 0 1 2.5.35c1.9-1.32 2.74-1.05 2.74-1.05.56 1.42.21 2.47.11 2.73.64.72 1.03 1.63 1.03 2.75 0 3.92-2.34 4.79-4.57 5.04.36.32.68.95.68 1.92 0 1.38-.01 2.49-.01 2.83 0 .27.18.6.69.49A10.25 10.25 0 0 0 22 12.23C22 6.58 17.52 2 12 2z"
+              ></path>
+            </svg>
+          </span>
+          <span class="lp-yc-copy" data-i18n-html="hero.github"
+            >we are open source on <span class="lp-yc-link">github</span></span
+          >
+          <svg
+            class="lp-yc-arrow"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            aria-hidden="true"
+          >
+            <path d="M7 17L17 7" stroke-linecap="round"></path>
+            <path d="M9 7h8v8" stroke-linecap="round" stroke-linejoin="round"></path>
+          </svg>
+        </a>
+      </div>
+
+      <div class="lp-start-card" aria-label="Initial Momo workflow">
+        <div class="lp-start-card-head">
+          <img class="lp-start-logo" src="/logo.png" alt="" width="56" height="56" decoding="async" />
+          <div>
+            <p class="lp-start-eyebrow">START HERE</p>
+            <h2>Use your own Markdown folder.</h2>
+          </div>
+        </div>
+        <div class="lp-start-steps">
+          <div class="lp-start-step">
+            <span>1</span>
+            <p>Open Momo and choose a local vault folder.</p>
+          </div>
+          <div class="lp-start-step">
+            <span>2</span>
+            <p>Create or edit plain Markdown notes.</p>
+          </div>
+          <div class="lp-start-step">
+            <span>3</span>
+            <p>Use search, graph, and AI once your notes are indexed.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- FEATURES SECTION 01 -->
+    <section class="lp-features" id="features" aria-labelledby="features-heading">
+      <div class="lp-features-label">
+        <span data-i18n="s01.label1">[01] INSTANT CONTEXT</span>
+        <span data-i18n="s01.label2">/ WHILE YOU WORK</span>
+      </div>
+
+      <h2 class="lp-features-heading" id="features-heading" data-i18n-html="s01.heading">
+        Momo gives you <em>instant context</em> while you work.<br />Never lose your train of
+        thought again.
+      </h2>
+
+      <div class="lp-feat-grid">
+        <article class="lp-feat-card">
+          <div class="lp-feat-copy">
+            <div class="lp-feat-ic" aria-hidden="true">
+              <svg
+                width="22"
+                height="22"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.5"
+                ><path
+                  d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"></path></svg
+              >
+            </div>
+            <h3 data-i18n="s01.c1.h3">Instant answers from your notes</h3>
+            <p data-i18n="s01.c1.p">
+              Momo finds the right answer in under a second, so you never fumble mid-thought.
+            </p>
+          </div>
+        </article>
+
+        <article class="lp-feat-card">
+          <div class="lp-feat-copy">
+            <div class="lp-feat-ic" aria-hidden="true">
+              <svg
+                width="22"
+                height="22"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.5"
+                ><path d="M12 8v4l3 3" stroke-linecap="round"></path><circle cx="12" cy="12" r="9"
+                ></circle></svg
+              >
+            </div>
+            <h3 data-i18n="s01.c2.h3">Learn from what worked before</h3>
+            <p data-i18n="s01.c2.p">
+              Answers from past sessions become suggestions for future ones.
+            </p>
+          </div>
+        </article>
+
+        <article class="lp-feat-card">
+          <div class="lp-feat-copy">
+            <div class="lp-feat-ic" aria-hidden="true">
+              <svg
+                width="22"
+                height="22"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.5"
+                ><path
+                  d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"></path><path
+                  d="M8 10h.01M12 10h.01M16 10h.01"
+                  stroke-linecap="round"></path></svg
+              >
+            </div>
+            <h3 data-i18n="s01.c3.h3">Know the right question to ask</h3>
+            <p data-i18n="s01.c3.p">
+              Momo picks up on context and suggests follow-up prompts to keep your thinking moving.
+            </p>
+          </div>
+        </article>
+
+        <article class="lp-feat-card">
+          <div class="lp-feat-copy">
+            <div class="lp-feat-ic" aria-hidden="true">
+              <svg
+                width="22"
+                height="22"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.5"
+                ><circle cx="12" cy="12" r="3"></circle><path
+                  d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"
+                  stroke-linecap="round"></path></svg
+              >
+            </div>
+            <h3 data-i18n="s01.c4.h3">Connected across all your docs</h3>
+            <p data-i18n="s01.c4.p">
+              Surface related notes, links, and ideas from anywhere in your workspace in one
+              keystroke.
+            </p>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <!-- FEATURES SECTION 02 -->
+    <section class="lp-features lp-features-alt" aria-labelledby="features2-heading">
+      <div class="lp-features-label">
+        <span data-i18n="s02.label1">[02] FULL VAULT</span>
+        <span data-i18n="s02.label2">/ WITHIN REACH</span>
+      </div>
+
+      <h2 class="lp-features-heading" id="features2-heading" data-i18n-html="s02.heading">
+        Your entire knowledge base,<br /><em>always at hand</em>.
+      </h2>
+
+      <div class="lp-feat-grid lp-feat-grid-split">
+        <article class="lp-feat-card lp-feat-card-tall">
+          <div class="lp-feat-copy">
+            <div class="lp-feat-ic" aria-hidden="true">
+              <svg
+                width="22"
+                height="22"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.5"
+                ><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path
+                  d="M14 2v6h6M16 13H8M16 17H8M10 9H8"></path></svg
+              >
+            </div>
+            <h3 data-i18n="s02.c1.h3">Markdown-first editing</h3>
+            <p data-i18n="s02.c1.p">
+              Write the way your brain works. Momo understands structure and surfaces it
+              intelligently.
+            </p>
+          </div>
+        </article>
+        <div class="lp-feat-stack">
+          <article class="lp-feat-card">
+            <div class="lp-feat-copy">
+              <div class="lp-feat-ic" aria-hidden="true">
+                <svg
+                  width="22"
+                  height="22"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.5"
+                  ><path d="M12 3l9 4.5v9L12 21l-9-4.5v-9L12 3z" stroke-linejoin="round"
+                  ></path><path d="M12 12l9-4.5M12 12v9M12 12L3 7.5" stroke-linecap="round"
+                  ></path></svg
+                >
+              </div>
+              <h3 data-i18n="s02.c2.h3">AI that reads your docs</h3>
+              <p data-i18n="s02.c2.p">
+                Upload any document and Momo learns its content for instant retrieval.
+              </p>
+            </div>
+          </article>
+          <article class="lp-feat-card">
+            <div class="lp-feat-copy">
+              <div class="lp-feat-ic" aria-hidden="true">
+                <svg
+                  width="22"
+                  height="22"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.5"
+                  ><rect x="3" y="11" width="18" height="11" rx="2"></rect><path
+                    d="M7 11V7a5 5 0 0 1 10 0v4"
+                    stroke-linecap="round"></path></svg
+                >
+              </div>
+              <h3 data-i18n="s02.c3.h3">Works offline too</h3>
+              <p data-i18n="s02.c3.p">
+                Your notes are yours. Momo runs locally and never sends your data without
+                permission.
+              </p>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- FEATURES SECTION 03 -->
+    <section class="lp-features lp-features-brain" aria-labelledby="features3-heading">
+      <div class="lp-features-label">
+        <span data-i18n="s03.label1">[03] SYNCED BRAIN</span>
+        <span data-i18n="s03.label2">/ SECOND BRAIN</span>
+      </div>
+
+      <h2 class="lp-features-heading" id="features3-heading" data-i18n-html="s03.heading">
+        Sync turns your notes into a <em>second brain</em> that compounds.
+      </h2>
+
+      <div class="lp-brain-wrap">
+        <article class="lp-brain-panel">
+          <div class="lp-brain-copy">
+            <div class="lp-feat-ic" aria-hidden="true">
+              <svg
+                width="22"
+                height="22"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.5"
+                ><path
+                  d="M3 12a9 9 0 0 1 14.8-6.9L21 8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"></path><path
+                  d="M21 3v5h-5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"></path><path
+                  d="M21 12a9 9 0 0 1-14.8 6.9L3 16"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"></path><path
+                  d="M3 21v-5h5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"></path></svg
+              >
+            </div>
+            <h3 data-i18n="s03.c1.h3">Sync carries the whole working context</h3>
+            <p data-i18n="s03.c1.p">
+              Momo does more than copy files. Markdown, wikilinks, backlinks, graph state, and the
+              context AI has already used stay aligned, so your vault feels like one continuous
+              working memory across devices.
+            </p>
+          </div>
+          <div class="lp-brain-copy">
+            <div class="lp-feat-ic" aria-hidden="true">
+              <svg width="22" height="22" viewBox="0 0 36 36" fill="none"
+                ><path
+                  d="M18.408 1.799c.338-.021.787-.003 1.117.014 1.45.062 2.885.339 4.254.822h.001c2.895 1.04 5.226 2.957 6.55 5.77.427.921.73 1.894.902 2.894l.05.305c.112.76.197 1.835.143 2.504-.198 2.45-1.202 5.114-2.02 7.406-1.27 3.555-2.06 5.982-.98 9.651v.001c.252.883.575 1.744.966 2.574l.042.088-.087.044q-.336.171-.678.33l-.089.04-.043-.087c-.781-1.595-1.425-3.758-1.546-5.534-.13-1.918.29-3.757.87-5.555.29-.9.62-1.79.942-2.676a44 44 0 0 0 .892-2.654c.33-1.133.653-2.292.767-3.463.145-1.981-.297-4.22-1.24-5.962-1.283-2.372-3.394-3.967-5.898-4.83l-.505-.163a13.8 13.8 0 0 0-3.008-.54c-2.382-.162-4.333.244-6.431 1.373l-.001-.001a11.15 11.15 0 0 0-3.863 3.602 11.1 11.1 0 0 0-1.82 5.876v.001c-.005.174 0 .346.006.519.006.171.015.345.015.518 0 .346-.032.698-.171 1.06-.145.375-.404.797-.598 1.141l-.96 1.705c-.152.27-.328.554-.44.824a.37.37 0 0 0-.01.233.44.44 0 0 0 .296.318c.15.052.343.056.571.048.222-.007.475-.026.718-.01.245.015.494.065.712.203.234.148.409.374.491.638.043.14.068.364.083.58.016.217.024.449.032.59l.157 2.45v.001c.029.468.025.902.104 1.312.078.402.237.768.587 1.084.669.604 1.367.54 2.128.434.755-.106 1.575-.254 2.399.276.323.21.592.492.784.824l.077.145c.102.215.201.598.286.978l.21 1.018.709 3.333.021.097-.097.02-.736.16-.101.02-.018-.102c-.058-.333-.15-.717-.221-1.057l-.418-1.975-.25-1.178c-.055-.257-.111-.57-.196-.794l-.074-.162a1.4 1.4 0 0 0-.333-.414l-.108-.084c-.256-.178-.538-.245-.844-.255-.355-.011-.735.054-1.148.107-.768.098-1.62.15-2.467-.486l-.17-.137a2.9 2.9 0 0 1-.873-1.324h-.001a4 4 0 0 1-.156-.93q-.015-.237-.023-.471t-.022-.455c-.065-1.037-.112-2.073-.192-3.105-.01-.134-.028-.24-.095-.302-.06-.057-.17-.088-.345-.097-.173-.009-.376.004-.604.009-.442.009-.965-.012-1.348-.343v-.001a1.43 1.43 0 0 1-.482-.987 1.6 1.6 0 0 1 .17-.765c.107-.23.252-.454.37-.662l.977-1.732c.122-.217.277-.466.408-.724.131-.26.23-.512.245-.727a10 10 0 0 0 .009-.877 11 11 0 0 1 .004-.903A12.02 12.02 0 0 1 9.85 5.77a12.02 12.02 0 0 1 6.58-3.743v-.001c.7-.139 1.275-.19 1.978-.226z"
+                  fill="currentColor"
+                  stroke="currentColor"
+                  stroke-width=".2"></path><path
+                  d="M18.213 4.928c.964-.035 1.81.259 2.61.759.114-.037.258-.073.367-.096a4.55 4.55 0 0 1 3.427.645l.154.107a4.55 4.55 0 0 1 1.642 2.194c.098.283.146.511.203.793 1.024.837 1.663 1.841 1.795 3.19l.02.26a4.5 4.5 0 0 1-.283 1.778c-.025.067-.09.2-.145.318a4 4 0 0 0-.074.168.5.5 0 0 0-.031.096 5 5 0 0 0-.008.341c0 .135 0 .278-.007.378a4.4 4.4 0 0 1-.998 2.482c-.797.967-1.843 1.483-3.069 1.612l-.044 2.049-.002.076-.077-.003a20 20 0 0 0-.625-.016l-.076-.001.002-.077c.005-.173.008-.772.022-1.357.006-.29.016-.576.029-.798.006-.11.014-.207.023-.281l.015-.096a.2.2 0 0 1 .025-.072.4.4 0 0 1 .199-.154 1.7 1.7 0 0 1 .388-.053c.15-.01.296-.017.395-.033.933-.154 1.802-.72 2.349-1.49a3.74 3.74 0 0 0 .683-2.037c.003-.078-.007-.18-.016-.288a1.3 1.3 0 0 1-.002-.297 1.1 1.1 0 0 1 .113-.305c.05-.1.1-.186.138-.27.156-.357.253-.736.288-1.124l.014-.225a3.75 3.75 0 0 0-1.293-2.967c-.065-.056-.141-.11-.225-.178a1 1 0 0 1-.216-.216.4.4 0 0 1-.053-.128 1 1 0 0 1-.027-.142c-.015-.102-.022-.188-.036-.244l-.001-.003a3.8 3.8 0 0 0-1.545-2.288 3.77 3.77 0 0 0-2.663-.63l-.186.03c-.084.018-.214.06-.353.098a2 2 0 0 1-.199.046.5.5 0 0 1-.169.01l-.01-.003a1.3 1.3 0 0 1-.301-.154c-.097-.062-.183-.124-.268-.17a3.78 3.78 0 0 0-4.542.715c-.058.061-.114.137-.181.22-.065.078-.138.16-.221.214a.7.7 0 0 1-.252.079c-.094.015-.174.023-.233.038h-.003a3.75 3.75 0 0 0-2.31 1.539 3.76 3.76 0 0 0-.604 2.833c.188 1.01.759 1.852 1.603 2.43h.001l.015.011.16.105c.797.488 1.725.607 2.65.454.065-.393.145-.689.353-1.055a2.9 2.9 0 0 1 1.757-1.366c.775-.211 1.51-.09 2.198.285a3 3 0 0 1 .395-.56l.199-.199a2.85 2.85 0 0 1 1.713-.738c.112-.317.264-.568.47-.769.217-.21.488-.36.82-.474l.075-.027.021.078.167.598.018.066-.063.025c-.199.078-.33.148-.438.24a1.3 1.3 0 0 0-.248.307c.223.047.404.11.622.201l.07.03-.03.069c-.08.187-.178.391-.262.574l-.032.07-.068-.034a2.06 2.06 0 0 0-.98-.19 2.12 2.12 0 0 0-1.742 1.052c-.049.086-.1.21-.14.309a.7.7 0 0 1-.18.273.3.3 0 0 1-.236.063.7.7 0 0 1-.225-.093c-.072-.042-.152-.098-.229-.147a2.1 2.1 0 0 0-1.155-.334 2.119 2.119 0 0 0-1.428 3.666 2.11 2.11 0 0 0 2.047.485l.25-.1c.083-.036.173-.072.26-.088a.37.37 0 0 1 .267.038q.127.076.197.277c.239.67.652 1.13 1.222 1.552a.24.24 0 0 1 .074.106 1 1 0 0 1 .036.139c.018.102.026.226.029.35.007.247-.006.515-.006.615v1.948h-.778v-2.679c-.57-.446-.869-.833-1.183-1.465-.127.05-.297.095-.441.122l-.155.026a2.897 2.897 0 0 1-3.233-2.462c-1.181.18-2.35-.065-3.339-.757a4.54 4.54 0 0 1-1.1-6.35c.732-1.026 1.77-1.646 3-1.854q.1-.118.203-.231V6.39c.874-.946 1.975-1.411 3.246-1.463Z"
+                  fill="currentColor"
+                  stroke="currentColor"
+                  stroke-width=".15"></path><path
+                  d="M25.034 13.443c.196.056.407.127.599.189l.074.024-.026.073a3.7 3.7 0 0 1-.48.947c.226.125.404.257.547.423.158.183.271.4.366.677l.026.076-.076.021-.601.166-.068.019-.023-.067a2 2 0 0 0-.077-.181c-.138-.278-.344-.415-.635-.52-1.206 1.016-2.718 1.228-4.14.493h-.001q-.136-.077-.264-.16a3.8 3.8 0 0 1-1.123.447l-.076.02-.016-.076-.13-.61-.015-.07.07-.018c.44-.11.744-.262 1.137-.488l.016-.008.016-.007.043-.016.04-.016.02-.008h.005l.005-.002.008-.001q.005-.001.024.002c.122.026.229.088.326.15.1.066.185.13.278.175h.002c.118.062.237.127.353.17 1.203.447 2.586.03 3.32-1.02.179-.256.273-.463.385-.758l.025-.064zm-9.286-4.647a.1.1 0 0 1 .03.017l.025.02q.024.02.054.051.061.062.133.143c.093.103.187.215.216.249l.047.053-.05.05c-.43.417-.705.86-.827 1.338-.123.478-.095.996.09 1.567l.02.063-.059.028c-.146.069-.442.169-.593.225l-.074.027-.024-.074c-.144-.434-.203-.699-.211-1.158v-.001c0-.233.016-.393.044-.611q-.023-.033-.047-.063l-.07-.077c-.272-.274-.62-.35-1.01-.357h-.068l-.005-.067q-.03-.31-.05-.623l-.003-.078.078-.002c.306-.006.562.022.804.098.217.07.418.178.633.334.224-.487.453-.76.84-1.135l.033-.032zm3.127-1.23a.3.3 0 0 1 .054.123q.018.072.029.166a5.6 5.6 0 0 1 .01.865 1.5 1.5 0 0 1-.043.301 2 2 0 0 0-.047.18c-.012.053-.026.11-.04.161.2.395.602.597 1.045.639l.071.007-.003.071-.03.63-.003.08-.08-.01a2.5 2.5 0 0 1-.777-.198 2.2 2.2 0 0 1-.586-.413l-.18.265-.002.004a3.6 3.6 0 0 1-.809.76l-.063.045-.043-.064-.35-.52-.043-.063.063-.042a2.6 2.6 0 0 0 .771-.798v-.001c.369-.595.485-1.31.324-1.991l-.019-.078.08-.014c.168-.029.38-.086.557-.128l.007-.002h.006l.04-.002.038-.001zm2.236.162c.533-.007.998.1 1.393.334q.591.35.96 1.071l.036.068-.07.034-.204.096h-.001l-.36.167-.063.03-.034-.062c-.186-.34-.4-.58-.66-.733-.261-.154-.573-.227-.957-.228h-.07l-.004-.07-.04-.628-.005-.078z"
+                  fill="currentColor"
+                  stroke="currentColor"
+                  stroke-width=".15"></path></svg
+              >
+            </div>
+            <h3 data-i18n="s03.c2.h3">An AI-maintained second brain</h3>
+            <p data-i18n="s03.c2.p">
+              New notes come back as searchable, linkable, reusable knowledge. Human-readable
+              Markdown stays the source of truth, while AI helps strengthen connections and surface
+              the next thought when you need it.
+            </p>
+          </div>
+        </article>
+
+      </div>
+    </section>
+
+    <!-- CTA FOOTER BANNER -->
+    <section class="lp-cta-banner" aria-label="Call to action">
+      <div class="lp-cta-banner-inner">
+        <h2 class="lp-cta-heading" data-i18n="cta.heading">Start thinking smarter today.</h2>
+        <p class="lp-cta-sub" data-i18n="cta.sub">
+          Download Momo for macOS — free to try, no sign-up required.
+        </p>
+        <div class="lp-hero-actions lp-cta-banner-actions">
+          <a class="lp-cta-outline" href="#features" data-i18n="cta.learn_more">Learn more</a>
+          <a class="lp-cta-filled" href={downloadHref}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"
+              ><path
+                d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"
+              ></path></svg
+            >
+            <span data-i18n="cta.download_mac">Download for macOS</span>
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <MarketingFooter />
+  </div>
+</BaseLayout>
+
+<style>
+  /* ── One Light ── */
+  .lp-root {
+    --ol-bg: var(--theme-ol-bg);
+    --ol-bg2: var(--theme-ol-bg2);
+    --ol-bg3: var(--theme-ol-bg3);
+    --ol-border: var(--theme-ol-border);
+    --ol-border2: var(--theme-ol-border2);
+    --ol-text: var(--theme-ol-text);
+    --ol-text2: var(--theme-ol-text2);
+    --ol-text3: var(--theme-ol-text3);
+    --ol-accent: var(--theme-ol-accent);
+    --ol-accent-dim: var(--theme-ol-accent-dim);
+    --ol-sel: var(--theme-ol-sel);
+    --ol-inact: var(--theme-ol-inact);
+    --ol-success: var(--theme-ol-success);
+    --ol-error: var(--theme-ol-error);
+    --ol-on-ink: var(--theme-ol-on-ink);
+    --ol-ink-hover: var(--theme-ol-ink-hover);
+
+    --lp-bg0: var(--ol-bg);
+    --lp-bg1: var(--ol-bg2);
+    --lp-surface: var(--theme-lp-surface);
+    --lp-ink: var(--ol-text);
+    --lp-ink2: var(--ol-text2);
+    --lp-muted: var(--ol-text2);
+    --lp-faint: var(--ol-text3);
+    --lp-line: var(--ol-border);
+    --lp-line2: var(--ol-border2);
+    --lp-shadow: 0 1px 2px rgba(56, 58, 66, 0.06);
+    --lp-shadow-lg: 0 24px 64px rgba(56, 58, 66, 0.1), 0 8px 24px rgba(56, 58, 66, 0.06);
+    --font-lp-hero-dot: 'Doto', ui-monospace, monospace;
+
+    background-color: var(--ol-bg);
+    color: var(--lp-ink);
+    min-height: 100vh;
+    font-family: var(--font-lp-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .lp-chevron {
+    opacity: 0.55;
+  }
+
+  /* ── Hero ── */
+  .lp-hero {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 4rem 1rem 0;
+  }
+
+  .lp-hero-inner {
+    position: relative;
+    z-index: 2;
+    width: 100%;
+    max-width: 70rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+  }
+
+  .lp-ph-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    margin: 0 0 clamp(0.85rem, 0.58rem + 0.9vw, 1.2rem);
+    padding: 0.42rem 0.72rem 0.42rem 0.5rem;
+    border: 1px solid color-mix(in oklab, var(--ol-border) 86%, transparent);
+    border-radius: 999px;
+    background: color-mix(in oklab, var(--ol-bg) 88%, white 12%);
+    color: var(--ol-text2);
+    box-shadow: 0 1px 2px rgba(56, 58, 66, 0.04);
+    font-size: 0.8125rem;
+    font-weight: 500;
+    letter-spacing: 0;
+    line-height: 1;
+    text-decoration: none;
+    transition:
+      border-color 0.18s ease,
+      color 0.18s ease,
+      transform 0.18s ease,
+      box-shadow 0.18s ease;
+  }
+
+  .lp-ph-badge:hover {
+    border-color: color-mix(in oklab, #da552f 34%, var(--ol-border));
+    color: var(--ol-text);
+    transform: translateY(-1px);
+    box-shadow: 0 8px 20px rgba(56, 58, 66, 0.08);
+  }
+
+  .lp-ph-badge:focus-visible {
+    outline: 2px solid rgba(218, 85, 47, 0.24);
+    outline-offset: 3px;
+  }
+
+  .lp-ph-mark {
+    display: grid;
+    place-items: center;
+    width: 1.2rem;
+    height: 1.2rem;
+    border-radius: 50%;
+    background: #da552f;
+    color: #fff;
+    font-family: 'Satoshi', var(--font-lp-sans);
+    font-size: 0.76rem;
+    font-weight: 800;
+    line-height: 1;
+    text-align: center;
+    flex-shrink: 0;
+  }
+
+  .lp-ph-letter {
+    display: block;
+    transform: translate(0.025em, 0.035em);
+  }
+
+  .lp-ph-copy {
+    color: inherit;
+    white-space: nowrap;
+  }
+
+  .lp-ph-arrow {
+    width: 0.72rem;
+    height: 0.72rem;
+    color: inherit;
+    opacity: 0.38;
+    flex-shrink: 0;
+    transition:
+      transform 0.2s ease,
+      opacity 0.18s ease;
+  }
+
+  .lp-ph-badge:hover .lp-ph-arrow {
+    transform: translate(1px, -1px);
+    opacity: 0.62;
+  }
+
+  .lp-hero-heading {
+    margin: 0;
+    width: max-content;
+    max-width: 100%;
+    margin-inline: auto;
+    font-family: var(--font-lp-hero-dot);
+    font-size: clamp(2.5rem, 6.5vw, 4.5rem);
+    font-weight: 700;
+    font-variation-settings: 'ROND' 100;
+    letter-spacing: 0.02em;
+    line-height: 1.1;
+    color: var(--ol-text);
+    -webkit-font-smoothing: auto;
+    -moz-osx-font-smoothing: auto;
+    text-shadow: 0 0.06em 0 color-mix(in oklab, var(--ol-text) 24%, transparent);
+  }
+
+  .lp-hero-sub {
+    margin: clamp(0.85rem, 0.5rem + 1.2vw, 1.125rem) 0 0;
+    width: 100%;
+    max-width: 100%;
+    padding: 0;
+    box-sizing: border-box;
+    font-size: clamp(0.8125rem, 0.42rem + 1.45vw, 1rem);
+    font-weight: 400;
+    letter-spacing: -0.012em;
+    line-height: 1.55;
+    color: var(--lp-muted);
+  }
+
+  .lp-hero-sub-line {
+    display: block;
+  }
+
+  .lp-hero-sub-line--mobile {
+    display: none;
+  }
+
+  .lp-hero-sub-line + .lp-hero-sub-line {
+    margin-top: clamp(0.22rem, 0.12rem + 0.35vw, 0.3rem);
+  }
+
+  .lp-yc-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    margin: 1.25rem 0 0;
+    padding: 0;
+    border: none;
+    background: none;
+    box-shadow: none;
+    color: var(--ol-text2);
+    font-size: 0.875rem;
+    font-weight: 400;
+    letter-spacing: -0.01em;
+    line-height: 1.35;
+    text-decoration: none;
+    transition: color 0.18s ease;
+  }
+
+  .lp-yc-badge:hover {
+    color: var(--ol-text);
+  }
+
+  .lp-yc-badge:focus-visible {
+    outline: 2px solid rgba(64, 120, 242, 0.3);
+    outline-offset: 3px;
+    border-radius: 2px;
+  }
+
+  .lp-gh-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.2rem;
+    height: 1.2rem;
+    color: inherit;
+    opacity: 0.88;
+    flex-shrink: 0;
+  }
+
+  .lp-gh-badge svg {
+    width: 1.15rem;
+    height: 1.15rem;
+  }
+
+  .lp-yc-copy {
+    color: inherit;
+  }
+
+  .lp-yc-link {
+    position: relative;
+    display: inline-block;
+    color: inherit;
+    font-weight: inherit;
+    font-size: inherit;
+    text-decoration: none;
+  }
+
+  .lp-yc-link::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -0.08em;
+    height: 1px;
+    background: color-mix(in oklab, currentColor 82%, transparent);
+    transform: scaleX(0);
+    transform-origin: left center;
+    opacity: 0.8;
+    transition:
+      transform 0.26s cubic-bezier(0.22, 1, 0.36, 1),
+      opacity 0.22s ease;
+  }
+
+  .lp-yc-badge:hover .lp-yc-link::after,
+  .lp-yc-badge:focus-visible .lp-yc-link::after {
+    transform: scaleX(1);
+    opacity: 1;
+  }
+
+  .lp-yc-arrow {
+    width: 0.8rem;
+    height: 0.8rem;
+    color: inherit;
+    opacity: 0.42;
+    margin-left: 0.02rem;
+    transition:
+      transform 0.2s ease,
+      opacity 0.18s ease;
+    flex-shrink: 0;
+  }
+
+  .lp-yc-badge:hover .lp-yc-arrow {
+    transform: translate(2px, -2px);
+    opacity: 0.65;
+  }
+
+  .lp-hero-actions {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-top: 2rem;
+    flex-wrap: wrap;
+    justify-content: center;
+    overflow: visible;
+  }
+
+  .lp-cta-outline {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    height: 2.75rem;
+    padding: 0 1.25rem;
+    border: 1px solid var(--ol-border);
+    border-radius: 999px;
+    color: var(--ol-text);
+    background: var(--ol-bg);
+    font-size: 0.9375rem;
+    font-weight: 500;
+    text-decoration: none;
+    transition:
+      border-color 0.15s,
+      background 0.15s,
+      box-shadow 0.15s;
+    box-shadow: var(--lp-shadow);
+  }
+
+  .lp-cta-outline:hover {
+    border-color: var(--ol-border2);
+    background: var(--lp-surface);
+  }
+
+  .lp-cta-filled {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    height: 2.75rem;
+    padding: 0 1.25rem;
+    border-radius: 999px;
+    background: var(--ol-text);
+    color: var(--ol-on-ink);
+    font-size: 0.9375rem;
+    font-weight: 600;
+    text-decoration: none;
+    box-shadow: var(--lp-shadow);
+    transition: background 0.15s;
+  }
+
+  .lp-cta-filled:hover {
+    background: var(--ol-ink-hover);
+  }
+
+  .lp-hero-download {
+    position: relative;
+    z-index: 1;
+    display: inline-block;
+    list-style: none;
+  }
+
+  .lp-hero-download[open] {
+    z-index: 30;
+  }
+
+  .lp-hero-download summary.lp-cta-filled--download {
+    list-style: none;
+    cursor: pointer;
+  }
+
+  .lp-hero-download summary.lp-cta-filled--download::-webkit-details-marker {
+    display: none;
+  }
+
+  .lp-hero-download summary.lp-cta-filled--download:focus-visible {
+    outline: 2px solid rgba(64, 120, 242, 0.45);
+    outline-offset: 3px;
+  }
+
+  .lp-chevron--hero-dl {
+    opacity: 0.55;
+    flex-shrink: 0;
+    transition:
+      transform 0.22s ease,
+      opacity 0.2s ease;
+  }
+
+  .lp-hero-download[open] .lp-chevron--hero-dl {
+    transform: rotate(180deg);
+    opacity: 0.82;
+  }
+
+  .lp-hero-download[open] > .lp-cta-filled {
+    background: var(--ol-ink-hover);
+  }
+
+  /* Hero download dropdown (panel styles live here; nav has its own copy in LandingNav) */
+  .lp-download-panel {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 0.375rem);
+    z-index: 50;
+    min-width: 12.5rem;
+    padding: 0.35rem;
+    background: var(--lp-surface);
+    border: 1px solid color-mix(in oklab, var(--ol-border) 80%, transparent);
+    border-radius: 0.5rem;
+    box-shadow:
+      0 4px 24px rgba(56, 58, 66, 0.08),
+      0 1px 3px rgba(56, 58, 66, 0.06);
+  }
+
+  .lp-download-panel--hero {
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+  }
+
+  .lp-download-row {
+    margin: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.45rem 0.6rem;
+    border-radius: 0.375rem;
+    font-size: 0.8125rem;
+    line-height: 1.35;
+    color: var(--ol-text2);
+  }
+
+  a.lp-download-row--link {
+    color: var(--ol-text);
+    font-weight: 600;
+    text-decoration: none;
+    transition:
+      background 0.18s ease,
+      color 0.18s ease;
+  }
+
+  a.lp-download-row--link:hover {
+    background: color-mix(in oklab, var(--ol-text) 5.5%, transparent);
+    color: var(--ol-text);
+  }
+
+  .lp-download-row--soon {
+    cursor: default;
+    color: var(--ol-text2);
+  }
+
+  .lp-download-soon {
+    flex-shrink: 0;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    color: var(--lp-faint);
+  }
+
+  .lp-start-card {
+    position: relative;
+    z-index: 0;
+    width: min(100%, 46rem);
+    margin: clamp(2.25rem, 1.25rem + 2.5vw, 3.5rem) auto 0;
+    padding: clamp(1rem, 0.7rem + 1.4vw, 1.75rem);
+    text-align: left;
+    border: 1px solid var(--ol-border);
+    border-radius: clamp(0.5rem, 0.35rem + 0.65vw, 0.875rem);
+    background: var(--lp-surface);
+    box-shadow: var(--lp-shadow-lg);
+  }
+
+  .lp-start-card-head {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .lp-start-logo {
+    display: block;
+    flex-shrink: 0;
+    border-radius: 0.5rem;
+  }
+
+  .lp-start-eyebrow {
+    margin: 0 0 0.25rem;
+    font: 700 0.6875rem/1 var(--font-lp-mono);
+    letter-spacing: 0.08em;
+    color: var(--ol-text3);
+  }
+
+  .lp-start-card h2 {
+    margin: 0;
+    font: 650 clamp(1.1rem, 0.95rem + 0.65vw, 1.45rem) / 1.15 var(--font-lp-sans);
+    color: var(--ol-text);
+  }
+
+  .lp-start-steps {
+    display: grid;
+    gap: 0.625rem;
+    margin-top: 1.25rem;
+  }
+
+  .lp-start-step {
+    display: grid;
+    grid-template-columns: 1.5rem 1fr;
+    gap: 0.75rem;
+    align-items: start;
+    padding: 0.75rem;
+    border: 1px solid var(--ol-border);
+    border-radius: 0.375rem;
+    background: var(--ol-bg);
+  }
+
+  .lp-start-step span {
+    display: inline-flex;
+    width: 1.5rem;
+    height: 1.5rem;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    background: var(--ol-text);
+    color: var(--ol-bg);
+    font: 700 0.75rem/1 var(--font-lp-sans);
+  }
+
+  .lp-start-step p {
+    margin: 0;
+    color: var(--ol-text2);
+    font-size: 0.9375rem;
+    line-height: 1.45;
+  }
+
+  /* ── Features ── */
+  .lp-features {
+    margin-top: 7rem;
+    padding: 4rem 2rem 5rem;
+    background: linear-gradient(180deg, var(--ol-bg2) 0%, var(--ol-bg3) 100%);
+    border-top: 1px solid var(--ol-border);
+  }
+
+  .lp-features-alt {
+    margin-top: 0;
+    background: linear-gradient(180deg, var(--ol-bg3) 0%, var(--ol-bg) 100%);
+  }
+
+  .lp-features-brain {
+    margin-top: 0;
+    background: linear-gradient(180deg, var(--ol-bg3) 0%, var(--ol-bg2) 100%);
+  }
+
+  .lp-features-label {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    max-width: 72rem;
+    margin: 0 auto 2.5rem;
+    color: var(--lp-faint);
+    font-size: 0.75rem;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-family: 'SF Mono', 'Fira Code', monospace;
+  }
+
+  .lp-features-label span:last-child {
+    color: var(--ol-text3);
+    opacity: 0.85;
+  }
+
+  .lp-features-heading {
+    max-width: 72rem;
+    margin: 0 auto 3rem;
+    font-size: clamp(1.75rem, 4vw, 2.75rem);
+    font-weight: 700;
+    letter-spacing: -0.025em;
+    line-height: 1.15;
+    color: var(--lp-ink);
+  }
+
+  .lp-features-heading em {
+    font-family: var(--font-lp-accent-serif);
+    font-style: italic;
+    font-weight: 400;
+    letter-spacing: -0.01em;
+    color: transparent;
+    background-image: linear-gradient(90deg, #3566d4 0%, #18a38a 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .lp-features-alt .lp-features-heading em {
+    background-image: linear-gradient(90deg, #7c4dff 0%, #e8912d 100%);
+  }
+
+  .lp-features-brain .lp-features-heading em {
+    background-image: linear-gradient(90deg, #3566d4 0%, #50a14f 100%);
+  }
+
+  .lp-brain-wrap {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1.25rem;
+    max-width: 72rem;
+    margin: 0 auto;
+    align-items: stretch;
+  }
+
+  .lp-brain-panel {
+    background: var(--lp-surface);
+    border: 1px solid var(--ol-border);
+    border-radius: 0.75rem;
+    box-shadow: var(--lp-shadow);
+  }
+
+  .lp-brain-panel {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    overflow: hidden;
+  }
+
+  .lp-brain-copy {
+    padding: 1.625rem 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    text-align: left;
+  }
+
+  .lp-brain-copy + .lp-brain-copy {
+    border-left: 1px solid var(--ol-border);
+  }
+
+  .lp-brain-copy h3 {
+    margin: 0;
+    font-size: 1.0625rem;
+    font-weight: 600;
+    letter-spacing: -0.015em;
+    line-height: 1.25;
+    color: var(--ol-text);
+  }
+
+  .lp-brain-copy p {
+    margin: 0;
+    color: var(--ol-text2);
+    font-size: 0.9375rem;
+    line-height: 1.6;
+  }
+
+  /* Feature cards */
+  .lp-feat-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1.25rem;
+    max-width: 72rem;
+    margin: 0 auto;
+    align-items: start;
+  }
+
+  .lp-feat-grid-split {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .lp-feat-grid-split > .lp-feat-card-tall {
+    min-height: 100%;
+  }
+
+  .lp-feat-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    min-width: 0;
+  }
+
+  .lp-feat-card {
+    display: grid;
+    grid-template-columns: 1fr;
+    background: var(--lp-surface);
+    border: 1px solid var(--ol-border);
+    border-radius: 0.75rem;
+    overflow: hidden;
+    box-shadow: var(--lp-shadow);
+    min-height: 13.5rem;
+    transition:
+      box-shadow 0.2s ease,
+      border-color 0.2s ease;
+  }
+
+  .lp-feat-card:hover {
+    border-color: var(--ol-border2);
+    box-shadow:
+      0 2px 8px rgba(56, 58, 66, 0.07),
+      0 0 0 1px var(--ol-accent-dim);
+  }
+
+  .lp-feat-copy {
+    padding: 1.625rem 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    text-align: left;
+  }
+
+  .lp-feat-ic {
+    width: 2.5rem;
+    height: 2.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--ol-border);
+    border-radius: 0.5rem;
+    color: var(--ol-text2);
+    background: var(--ol-bg);
+    flex-shrink: 0;
+  }
+
+  .lp-feat-copy h3 {
+    margin: 0;
+    font-size: 1.0625rem;
+    font-weight: 600;
+    color: var(--ol-text);
+    letter-spacing: -0.015em;
+    line-height: 1.25;
+  }
+
+  .lp-feat-copy p {
+    margin: 0;
+    color: var(--ol-text2);
+    font-size: 0.9375rem;
+    line-height: 1.6;
+  }
+
+
+  /* ── CTA Banner (aligned with footer: left rail, soft rule) ── */
+  .lp-cta-banner {
+    padding: 3.5rem 2rem 3.25rem;
+    text-align: left;
+    border-top: 1px solid color-mix(in oklab, var(--ol-border) 38%, transparent);
+    background: var(--ol-bg);
+  }
+
+  .lp-cta-banner-inner {
+    max-width: 64rem;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .lp-cta-heading {
+    margin: 0;
+    max-width: 22rem;
+    font-size: clamp(1.65rem, 3.8vw, 2.35rem);
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    line-height: 1.12;
+    color: var(--lp-ink);
+  }
+
+  .lp-cta-sub {
+    margin: 0.85rem 0 0;
+    max-width: 28rem;
+    color: var(--lp-muted);
+    font-size: 0.9375rem;
+    line-height: 1.6;
+  }
+
+  .lp-cta-banner-actions {
+    margin-top: 1.5rem;
+    justify-content: flex-start;
+  }
+
+  /* ── Responsive ── */
+  @media (max-width: 48rem) {
+    .lp-hero {
+      padding: 3.25rem 0.75rem 0;
+    }
+
+    .lp-ph-badge {
+      max-width: 100%;
+      padding-right: 0.58rem;
+      font-size: 0.75rem;
+    }
+
+    .lp-ph-copy {
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .lp-hero-sub {
+      max-width: 20rem;
+      font-size: 0.875rem;
+      line-height: 1.55;
+    }
+
+    .lp-hero-sub .lp-hero-sub-line--desktop {
+      display: none !important;
+    }
+
+    .lp-hero-sub .lp-hero-sub-line--mobile {
+      display: block !important;
+    }
+
+    .lp-start-card {
+      margin-top: 2rem;
+      padding: 1rem;
+    }
+
+    .lp-start-card-head {
+      align-items: flex-start;
+    }
+
+    .lp-features {
+      padding: 3rem 1rem;
+    }
+
+    .lp-feat-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .lp-feat-grid-split {
+      grid-template-columns: 1fr;
+    }
+
+    .lp-brain-wrap,
+    .lp-brain-panel {
+      grid-template-columns: 1fr;
+    }
+
+    .lp-brain-copy + .lp-brain-copy {
+      border-left: none;
+      border-top: 1px solid var(--ol-border);
+    }
+
+    .lp-feat-card {
+      grid-template-columns: 1fr;
+      min-height: 0;
+    }
+
+
+
+    .lp-cta-banner {
+      padding: 2.75rem 1.25rem 2.5rem;
+    }
+
+    .lp-cta-banner-actions {
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    .lp-cta-banner-actions .lp-cta-outline,
+    .lp-cta-banner-actions .lp-cta-filled {
+      justify-content: center;
+    }
+  }
+
+  @media (max-width: 30rem) {
+    .lp-start-card-head {
+      gap: 0.75rem;
+    }
+
+    .lp-start-logo {
+      width: 48px;
+      height: 48px;
+    }
+  }
+</style>

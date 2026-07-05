@@ -1,0 +1,66 @@
+[data-diff-editor] .ProseMirror {
+  cursor: default;
+  caret-color: transparent;
+}
+
+[data-diff-editor] .diff-block {
+  margin: 0;
+  border-left: 0.25rem solid transparent;
+  border-radius: 0;
+  padding: 0.125rem 0 0.125rem 0.3rem;
+}
+
+/* Gap between any two diff blocks */
+[data-diff-editor] .diff-block + .diff-block {
+  margin-top: 0.75rem;
+}
+
+/* Collapse gap between consecutive same-type blocks */
+[data-diff-editor] .diff-block[data-diff-type="added"] + .diff-block[data-diff-type="added"],
+[data-diff-editor] .diff-block[data-diff-type="removed"] + .diff-block[data-diff-type="removed"],
+[data-diff-editor] .diff-block[data-diff-type="modified"] + .diff-block[data-diff-type="modified"] {
+  margin-top: 0;
+}
+
+[data-diff-editor] .diff-block > * {
+  margin-left: 0;
+  margin-right: 0;
+}
+
+[data-diff-editor] .diff-block > *:first-child {
+  margin-top: 0;
+}
+
+[data-diff-editor] .diff-block > *:last-child {
+  margin-bottom: 0;
+}
+
+[data-diff-editor] .diff-block[data-diff-type="added"] {
+  border-left-color: var(--color-created);
+  background: color-mix(in srgb, var(--color-created) 10%, transparent);
+}
+
+[data-diff-editor] .diff-block[data-diff-type="removed"] {
+  border-left-color: var(--color-deleted);
+  background: color-mix(in srgb, var(--color-deleted) 10%, transparent);
+  opacity: 0.92;
+}
+
+[data-diff-editor] .diff-block[data-diff-type="modified"] {
+  border-left-color: var(--color-warning);
+  background: color-mix(in srgb, var(--color-warning) 8%, transparent);
+}
+
+[data-diff-editor] ins[data-diff-added] {
+  background: color-mix(in srgb, var(--color-created) 18%, transparent);
+  color: inherit;
+  text-decoration: none;
+  border-radius: 0;
+}
+
+[data-diff-editor] del[data-diff-removed] {
+  background: color-mix(in srgb, var(--color-deleted) 14%, transparent);
+  color: color-mix(in srgb, var(--color-text-secondary) 70%, var(--color-deleted));
+  text-decoration-thickness: 1.5px;
+  border-radius: 0;
+}

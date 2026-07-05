@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-ai-register-proxy-tool"
+description = "Enables the ai_register_proxy_tool command without any pre-configured scope."
+commands.allow = ["ai_register_proxy_tool"]
+
+[[permission]]
+identifier = "deny-ai-register-proxy-tool"
+description = "Denies the ai_register_proxy_tool command without any pre-configured scope."
+commands.deny = ["ai_register_proxy_tool"]

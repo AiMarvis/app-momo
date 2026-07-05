@@ -1,0 +1,53 @@
+$schema: "https://moonrepo.dev/schemas/project.json"
+
+language: "rust"
+layer: "library"
+
+tasks:
+  format:
+    command: "cargo fmt -p kuku-indexer"
+
+  format-check:
+    command: "cargo fmt -p kuku-indexer -- --check"
+    inputs:
+      - "src/**/*.rs"
+      - "Cargo.toml"
+
+  # clippy has no safe auto-fix convention, so `lint` and `lint-check`
+  # run the same command. Both names exist so the standard package-level
+  # commands (format / lint / check / test) stay symmetric across the
+  # workspace.
+  lint:
+    command: "cargo clippy -p kuku-indexer --all-targets -- -D warnings"
+    inputs:
+      - "src/**/*.rs"
+      - "Cargo.toml"
+      - "/Cargo.toml"
+      - "/Cargo.lock"
+
+  lint-check:
+    command: "cargo clippy -p kuku-indexer --all-targets -- -D warnings"
+    inputs:
+      - "src/**/*.rs"
+      - "Cargo.toml"
+      - "/Cargo.toml"
+      - "/Cargo.lock"
+
+  test:
+    command: "cargo test -p kuku-indexer"
+    inputs:
+      - "src/**/*.rs"
+      - "Cargo.toml"
+      - "/Cargo.toml"
+      - "/Cargo.lock"
+
+  clean:
+    command: "cargo clean -p kuku-indexer"
+    options:
+      cache: false
+      runInCI: false
+
+  check:
+    deps:
+      - "format-check"
+      - "lint-check"

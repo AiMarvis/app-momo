@@ -1,0 +1,7 @@
+{
+  "extends": ["../../.oxfmtrc.json"],
+  "ignorePatterns": [".astro", "dist"],
+  "sortTailwindcss": {
+    "stylesheet": "./src/styles/global.css"
+  }
+}

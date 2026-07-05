@@ -1,0 +1,74 @@
+name: kuku-preview
+
+# Preview stack: API + DB + Cloudflare Tunnel. No web service — the
+# preview Astro bundle is deployed separately to Cloudflare Pages by
+# `scripts/release-preview.sh` (via `wrangler pages deploy`).
+#
+# Exposure model: the server never binds a public host port. `cloudflared`
+# joins the compose network and proxies `preview-api.kuku.mom` → the
+# internal `server:8080`. That keeps the attack surface to the one
+# hostname CF manages and avoids any inbound firewall rules on the host.
+services:
+  server:
+    build:
+      context: ../../..
+      dockerfile: infra/docker/server/Dockerfile
+    env_file:
+      - ./env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-kuku_preview}
+      POSTGRES_USER: ${POSTGRES_USER:-kuku}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in preview env}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-kuku} -d ${POSTGRES_DB:-kuku_preview}",
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  # Cloudflare Tunnel. Configured via TUNNEL_TOKEN (Zero Trust → Networks
+  # → Tunnels → Create). In the CF dashboard set the public hostname
+  # `preview-api.kuku.mom` → service `http://server:8080` so cloudflared
+  # resolves the Go API over Docker's internal DNS.
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN:?set CLOUDFLARE_TUNNEL_TOKEN in preview env}
+    depends_on:
+      - server
+    restart: unless-stopped
+
+  mailpit:
+    image: axllent/mailpit:latest
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+
+volumes:
+  postgres-data:
+
+# Pin the compose network subnet so `TRUSTED_PROXIES` can list it
+# deterministically. Without this the daemon picks an arbitrary
+# 172.x.0.0/16 each time the project is recreated, and the real-IP
+# middleware stops trusting cloudflared's sidecar hop — requests then
+# get logged under the Docker bridge IP instead of the end user.
+networks:
+  default:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16

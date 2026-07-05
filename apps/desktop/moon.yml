@@ -1,0 +1,205 @@
+$schema: "https://moonrepo.dev/schemas/project.json"
+
+language: "javascript"
+layer: "application"
+
+# Desktop is a Tauri app: Solid frontend (TS) + `momo` crate
+# (apps/desktop/src-tauri/) on the Rust side. The crate depends on
+# kuku-ai, kuku-contract, and kuku-indexer via Cargo path deps, so we
+# list them here even though Cargo already wires them — it keeps moon's
+# project graph honest and enables per-dep affected detection.
+dependsOn:
+  - "kuku-ai"
+  - "kuku-contract"
+  - "kuku-indexer"
+
+# Tasks are split per-language (TS / Rust) and then aggregated into the
+# four standard package-level commands (format / lint / check / test) at
+# the bottom. Run `moon run desktop:format` to format both stacks; run a
+# specific sub-task (e.g. `desktop:format-rust`) to scope to one.
+tasks:
+  # --- TS/JS side -----------------------------------------------------
+  format-ts:
+    command: "oxfmt --write ."
+
+  format-ts-check:
+    command: "oxfmt --check ."
+    inputs:
+      - "src/**/*"
+      - "src-tauri/**/*.json"
+      - "*.{ts,tsx,js,mjs,cjs,json}"
+      - ".oxlintrc.json"
+
+  lint-ts:
+    command: "oxlint --type-aware --type-check --fix -c .oxlintrc.json"
+
+  lint-ts-check:
+    command: "oxlint --type-aware --type-check -c .oxlintrc.json"
+    inputs:
+      - "src/**/*"
+      - ".oxlintrc.json"
+      - "/.oxlintrc.json"
+      - "tsconfig.json"
+
+  test-ts:
+    command: "vitest run"
+    inputs:
+      - "src/**/*"
+      - "vite.config.*"
+      - "tsconfig.json"
+
+  build:
+    # tsc emits types to verify, then vite builds the web bundle. Tauri's
+    # env/config-specific desktop bundle flows live below as dedicated moon
+    # tasks so preview/prod entry points stay in one task graph.
+    script: "tsc && vite build"
+    inputs:
+      - "src/**/*"
+      - "public/**/*"
+      - "index.html"
+      - "vite.config.*"
+      - "tsconfig.json"
+    outputs:
+      - "dist"
+
+  # --- Tauri bundle flows ---------------------------------------------
+  tauri-clean:
+    # Clean only the desktop frontend bundle and the momo Rust crate's
+    # build artifacts. Keep this opt-in because it invalidates incremental
+    # builds and is slower than the normal local build path.
+    script: 'rm -rf dist "$workspaceRoot/target/release/bundle" && cargo clean -p momo'
+    toolchains: ["rust"]
+    options:
+      cache: false
+      runInCI: false
+
+  tauri-dev-preview:
+    command: "tauri dev --config src-tauri/tauri.preview.conf.json"
+    env:
+      VITE_KUKU_API_URL: "https://preview-api.kuku.mom"
+      VITE_KUKU_WEB_URL: "https://preview.kuku.mom"
+      KUKU_API_URL: "https://preview-api.kuku.mom"
+    options:
+      cache: false
+      runInCI: false
+    preset: "server"
+
+  tauri-build-preview:
+    command: "tauri build --config src-tauri/tauri.preview.conf.json --features devtools"
+    env:
+      VITE_KUKU_API_URL: "https://preview-api.kuku.mom"
+      VITE_KUKU_WEB_URL: "https://preview.kuku.mom"
+      KUKU_API_URL: "https://preview-api.kuku.mom"
+    options:
+      cache: false
+
+  tauri-build-preview-clean:
+    deps:
+      - "tauri-clean"
+      - "tauri-build-preview"
+    options:
+      cache: false
+      runInCI: false
+
+  tauri-build-prod:
+    command: "tauri build --config src-tauri/tauri.conf.json"
+    env:
+      VITE_KUKU_API_URL: "https://api.kuku.mom"
+      VITE_KUKU_WEB_URL: "https://www.kuku.mom"
+      KUKU_API_URL: "https://api.kuku.mom"
+    options:
+      cache: false
+
+  tauri-build-prod-clean:
+    deps:
+      - "tauri-clean"
+      - "tauri-build-prod"
+    options:
+      cache: false
+      runInCI: false
+
+  # --- Rust side (momo crate at src-tauri/) ---------------------------
+  # cargo reads the workspace manifest from the repo root regardless of
+  # cwd, so `-p momo` is enough to scope the build. toolchains: rust
+  # overrides the project-level 'javascript' for these tasks.
+  format-rust:
+    command: "cargo fmt -p momo"
+    toolchains: ["rust"]
+
+  format-rust-check:
+    command: "cargo fmt -p momo -- --check"
+    toolchains: ["rust"]
+    inputs:
+      - "src-tauri/**/*.rs"
+      - "src-tauri/Cargo.toml"
+      - "src-tauri/build.rs"
+
+  # clippy has no safe auto-fix convention, so `lint-rust` and
+  # `lint-rust-check` run the same command. Keeping both names preserves
+  # symmetry with the TS side and lets the aggregators below read cleanly.
+  lint-rust:
+    command: "cargo clippy -p momo --all-targets -- -D warnings"
+    toolchains: ["rust"]
+    inputs:
+      - "src-tauri/**/*.rs"
+      - "src-tauri/Cargo.toml"
+      - "src-tauri/build.rs"
+      - "/Cargo.toml"
+      - "/Cargo.lock"
+
+  lint-rust-check:
+    command: "cargo clippy -p momo --all-targets -- -D warnings"
+    toolchains: ["rust"]
+    inputs:
+      - "src-tauri/**/*.rs"
+      - "src-tauri/Cargo.toml"
+      - "src-tauri/build.rs"
+      - "/Cargo.toml"
+      - "/Cargo.lock"
+
+  test-rust:
+    command: "cargo test -p momo"
+    toolchains: ["rust"]
+    inputs:
+      - "src-tauri/**/*.rs"
+      - "src-tauri/Cargo.toml"
+      - "/Cargo.toml"
+      - "/Cargo.lock"
+
+  # --- Aggregators (package-level standard commands) ------------------
+  clean:
+    deps:
+      - "tauri-clean"
+    options:
+      cache: false
+      runInCI: false
+
+  format:
+    deps:
+      - "format-ts"
+      - "format-rust"
+
+  format-check:
+    deps:
+      - "format-ts-check"
+      - "format-rust-check"
+
+  lint:
+    deps:
+      - "lint-ts"
+      - "lint-rust"
+
+  lint-check:
+    deps:
+      - "lint-ts-check"
+      - "lint-rust-check"
+
+  test:
+    deps:
+      - "test-ts"
+      - "test-rust"
+
+  check:
+    deps:
+      - "format-check"
+      - "lint-check"

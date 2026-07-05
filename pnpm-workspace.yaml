@@ -1,0 +1,30 @@
+packages:
+  - apps/*
+  - packages/*
+
+storeDir: ${HOME}/.cache/momo/pnpm-store
+
+minimumReleaseAge: 3333
+
+minimumReleaseAgeExclude:
+  - oxlint
+  - oxfmt
+  - oxlint-tsgolint
+  - '@oxlint/*'
+  - '@oxfmt/*'
+  - '@oxlint-tsgolint/*'
+
+overrides:
+  devalue: 5.8.1
+  fast-uri: 3.1.2
+  yaml: 2.8.4
+
+allowBuilds:
+  '@bufbuild/buf': true
+  esbuild: true
+  msw: true
+  sharp: true
+
+patchedDependencies:
+  three-forcegraph@1.43.4: patches/three-forcegraph.patch
+  tinykeys: patches/tinykeys.patch

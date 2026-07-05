@@ -1,0 +1,122 @@
+---
+import BaseLayout from '@/layouts/base_layout.astro';
+import LandingNav from '@/components/landing_nav.astro';
+import MarketingFooter from '@/components/marketing_footer.astro';
+
+interface Props {
+  title: string;
+  description: string;
+  /** Wider main column (e.g. roadmap with feature-style cards) */
+  wide?: boolean;
+}
+
+const { title, description, wide = false } = Astro.props;
+const pathname = Astro.url.pathname;
+---
+
+<BaseLayout title={title} description={description}>
+  <div class="lp-marketing">
+    <LandingNav pathname={pathname} />
+    <main class:list={['lp-subpage', wide && 'lp-subpage--wide']}>
+      <slot />
+    </main>
+    <MarketingFooter />
+  </div>
+</BaseLayout>
+
+<style>
+  .lp-marketing {
+    --ol-bg: var(--theme-ol-bg);
+    --ol-bg2: var(--theme-ol-bg2);
+    --ol-bg3: var(--theme-ol-bg3);
+    --ol-border: var(--theme-ol-border);
+    --ol-border2: var(--theme-ol-border2);
+    --ol-text: var(--theme-ol-text);
+    --ol-text2: var(--theme-ol-text2);
+    --ol-text3: var(--theme-ol-text3);
+    --ol-accent: var(--theme-ol-accent);
+    --ol-accent-dim: var(--theme-ol-accent-dim);
+    --ol-sel: var(--theme-ol-sel);
+    --ol-inact: var(--theme-ol-inact);
+    --ol-success: var(--theme-ol-success);
+    --ol-error: var(--theme-ol-error);
+    --ol-on-ink: var(--theme-ol-on-ink);
+    --ol-ink-hover: var(--theme-ol-ink-hover);
+
+    --lp-bg0: var(--ol-bg);
+    --lp-bg1: var(--ol-bg2);
+    --lp-surface: var(--theme-lp-surface);
+    --lp-ink: var(--ol-text);
+    --lp-ink2: var(--ol-text2);
+    --lp-muted: var(--ol-text2);
+    --lp-faint: var(--ol-text3);
+    --lp-line: var(--ol-border);
+    --lp-line2: var(--ol-border2);
+    --lp-shadow: 0 1px 2px rgba(56, 58, 66, 0.06);
+    --lp-shadow-lg: 0 24px 64px rgba(56, 58, 66, 0.1), 0 8px 24px rgba(56, 58, 66, 0.06);
+
+    background-color: var(--ol-bg);
+    color: var(--lp-ink);
+    min-height: 100vh;
+    font-family: var(--font-lp-sans);
+    -webkit-font-smoothing: antialiased;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .lp-subpage {
+    width: 100%;
+    max-width: 48rem;
+    margin: 0 auto;
+    padding: 2.5rem 2rem 4rem;
+    flex: 1;
+  }
+
+  .lp-subpage--wide {
+    max-width: 72rem;
+  }
+
+  .lp-subpage :global(h1) {
+    margin: 0 0 0.75rem;
+    font-size: clamp(1.75rem, 4vw, 2.25rem);
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    color: var(--lp-ink);
+  }
+
+  .lp-subpage :global(.lp-lead) {
+    margin: 0 0 2rem;
+    font-size: 1.0625rem;
+    line-height: 1.6;
+    color: var(--lp-muted);
+  }
+
+  .lp-subpage :global(.lp-prose) {
+    line-height: 1.65;
+    color: var(--ol-text2);
+  }
+
+  .lp-subpage :global(.lp-prose p) {
+    margin: 0 0 1rem;
+  }
+
+  .lp-subpage :global(.lp-prose ul) {
+    margin: 0 0 1.25rem;
+    padding-left: 1.25rem;
+  }
+
+  .lp-subpage :global(.lp-prose li) {
+    margin-bottom: 0.4rem;
+  }
+
+  .lp-subpage :global(.lp-prose strong) {
+    color: var(--ol-text);
+    font-weight: 600;
+  }
+
+  @media (max-width: 48rem) {
+    .lp-subpage {
+      padding: 1.75rem 1rem 3rem;
+    }
+  }
+</style>

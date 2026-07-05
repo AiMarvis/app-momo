@@ -1,0 +1,157 @@
+---
+import SignInForm from '@/components/auth/sign_in_form';
+import BaseLayout from '@/layouts/base_layout.astro';
+import LandingNav from '@/components/landing_nav.astro';
+
+const pathname = Astro.url.pathname;
+---
+
+<BaseLayout title="Sign in | Momo" description="Sign in to Momo.">
+  <div class="signin-page">
+    <LandingNav pathname={pathname} />
+    <main class="signin-main">
+      <div class="signin-split">
+        <div class="signin-col signin-col--form">
+          <section class="signin-panel" aria-labelledby="auth-title">
+            <div class="auth-heading">
+              <p class="eyebrow">SIGN IN</p>
+              <h1 id="auth-title">Welcome to Momo</h1>
+              <p>Continue to your workspace.</p>
+            </div>
+
+            <SignInForm client:load />
+          </section>
+        </div>
+
+      </div>
+    </main>
+  </div>
+</BaseLayout>
+
+<style is:global>
+  /* One page, no document scroll */
+  html:has(.signin-page),
+  body:has(.signin-page) {
+    height: 100%;
+    max-height: 100%;
+    overflow: hidden;
+  }
+</style>
+
+<style>
+  .signin-page {
+    --ol-bg: var(--theme-ol-bg);
+    --ol-bg2: var(--theme-ol-bg2);
+    --ol-bg3: var(--theme-ol-bg3);
+    --ol-border: var(--theme-ol-border);
+    --ol-border2: var(--theme-ol-border2);
+    --ol-text: var(--theme-ol-text);
+    --ol-text2: var(--theme-ol-text2);
+    --ol-text3: var(--theme-ol-text3);
+    --ol-accent: var(--theme-ol-accent);
+    --ol-accent-dim: var(--theme-ol-accent-dim);
+    --ol-sel: var(--theme-ol-sel);
+    --ol-inact: var(--theme-ol-inact);
+    --ol-success: var(--theme-ol-success);
+    --ol-error: var(--theme-ol-error);
+    --ol-on-ink: var(--theme-ol-on-ink);
+    --ol-ink-hover: var(--theme-ol-ink-hover);
+    --lp-surface: var(--theme-lp-surface);
+    --lp-ink: var(--ol-text);
+    --lp-ink2: var(--ol-text2);
+    --lp-muted: var(--ol-text2);
+    --lp-faint: var(--ol-text3);
+    --lp-shadow: 0 1px 2px rgba(56, 58, 66, 0.06);
+    --lp-shadow-lg: 0 24px 64px rgba(56, 58, 66, 0.1), 0 8px 24px rgba(56, 58, 66, 0.06);
+    --lp-nav-pad-x: 2rem;
+    --signin-nav-h: 3.75rem;
+    --signin-flat-bg: var(--ol-bg);
+
+    height: 100dvh;
+    max-height: 100dvh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    background-color: var(--ol-bg);
+    color: var(--lp-ink);
+    font-family: var(--font-lp-sans);
+    -webkit-font-smoothing: antialiased;
+    overscroll-behavior: none;
+  }
+
+  .signin-main {
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .signin-split {
+    flex: 1;
+    min-height: 0;
+    height: 100%;
+    display: grid;
+    position: relative;
+    grid-template-columns: minmax(18.5rem, 28.5rem);
+    justify-content: center;
+    gap: 0;
+    max-width: 36rem;
+    margin: 0 auto;
+    width: 100%;
+    overflow: hidden;
+  }
+
+  .signin-col--form {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-height: 0;
+    overflow: hidden;
+    padding: clamp(1rem, 2.5vh, 2rem) var(--lp-nav-pad-x);
+    padding-right: clamp(0.75rem, 2vw, 1.5rem);
+    background: var(--signin-flat-bg);
+    border-right: none;
+    box-shadow: none;
+  }
+
+  .signin-panel {
+    max-width: 28.5rem;
+    width: 100%;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  @media (max-width: 60rem) {
+    .signin-split {
+      grid-template-columns: 1fr;
+      grid-template-rows: auto minmax(0, 1fr);
+    }
+
+    .signin-col--form {
+      justify-content: flex-start;
+      padding-top: 1rem;
+      padding-bottom: 0.5rem;
+      flex-shrink: 0;
+    }
+
+    .signin-panel {
+      max-width: 100%;
+    }
+
+  }
+
+  @media (max-width: 48rem) {
+    .signin-page {
+      --lp-nav-pad-x: 1rem;
+    }
+
+    .auth-heading .eyebrow {
+      margin-bottom: 0.5rem;
+    }
+
+    .auth-heading h1 {
+      font-size: 1.375rem;
+    }
+  }
+</style>

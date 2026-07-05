@@ -1,0 +1,66 @@
+---
+import BaseHead from '@/components/base_head.astro';
+import '@/styles/global.css';
+
+interface Props {
+  title: string;
+  description: string;
+}
+
+const { title, description } = Astro.props;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <script is:inline>
+      (() => {
+        const LANG_KEY = 'kuku_lang';
+        const SUPPORTED = ['en', 'ko', 'ja'];
+        const stored = localStorage.getItem(LANG_KEY);
+        const preferred = (navigator.languages && navigator.languages[0]) || navigator.language;
+        let lang = stored;
+
+        if (!SUPPORTED.includes(lang)) {
+          const lower = preferred.toLowerCase();
+          lang = 'en';
+          if (lower.startsWith('ko')) lang = 'ko';
+          if (lower.startsWith('ja')) lang = 'ja';
+        }
+
+        document.documentElement.lang = lang;
+      })();
+    </script>
+    <script is:inline>
+      (() => {
+        const KEY = 'kuku_web_theme';
+        const DARK = '#1a1a1a';
+        const LIGHT = '#fafafa';
+        const root = document.documentElement;
+        const stored = localStorage.getItem(KEY);
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        let initialTheme = stored;
+        if (stored !== 'light' && stored !== 'dark') {
+          initialTheme = prefersDark ? 'dark' : 'light';
+        }
+
+        const applyTheme = (theme, persist) => {
+          root.setAttribute('data-theme', theme);
+          root.style.colorScheme = theme;
+          const meta = document.querySelector('meta[name="theme-color"]');
+          if (meta) meta.setAttribute('content', theme === 'dark' ? DARK : LIGHT);
+          if (persist) localStorage.setItem(KEY, theme);
+          window.dispatchEvent(new CustomEvent('kuku-theme-change', { detail: { theme } }));
+        };
+
+        window.__kukuSetTheme = applyTheme;
+        applyTheme(initialTheme, false);
+      })();
+    </script>
+    <BaseHead title={title} description={description} />
+    <slot name="head" />
+  </head>
+  <body>
+    <slot />
+  </body>
+</html>

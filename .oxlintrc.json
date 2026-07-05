@@ -1,0 +1,120 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["eslint", "typescript", "unicorn", "oxc", "import"],
+  "categories": {
+    "correctness": "error",
+    "suspicious": "warn",
+    "style": "warn",
+    "pedantic": "off",
+    "restriction": "off",
+    "nursery": "off"
+  },
+  "rules": {
+    // ── Disable overly strict style rules ──
+    "eslint/no-magic-numbers": "off",
+    "eslint/sort-keys": "off",
+    "eslint/func-style": "off",
+    "eslint/curly": "off",
+    "eslint/id-length": "off",
+    "eslint/sort-imports": "off",
+    "eslint/no-ternary": "off",
+    "eslint/prefer-destructuring": "off",
+    "eslint/max-statements": "off",
+    "eslint/init-declarations": "off",
+    "eslint/capitalized-comments": "off",
+    "eslint/max-lines-per-function": "off",
+    "eslint/max-params": "off",
+    "eslint/no-undefined": "off",
+    "eslint/no-continue": "off",
+    "eslint/no-inline-comments": "off",
+    "eslint/no-negated-condition": "off",
+    "eslint/no-plusplus": "off",
+    "eslint/no-void": "off",
+    "eslint/no-warning-comments": "off",
+    "eslint/func-names": "off",
+
+    // ── Disable noisy unicorn style rules ──
+    "unicorn/switch-case-braces": "off",
+    "unicorn/no-null": "off",
+    "unicorn/no-negated-condition": "off",
+    "unicorn/numeric-separators-style": "off",
+    "unicorn/explicit-length-check": "off",
+    "unicorn/no-array-for-each": "off",
+    "unicorn/no-nested-ternary": "off",
+    "unicorn/prefer-global-this": "off",
+
+    // ── Disable import restriction rules ──
+    "import/no-named-export": "off",
+    "import/group-exports": "off",
+    "import/exports-last": "off",
+    "import/prefer-default-export": "off",
+    "import/no-namespace": "off",
+    "import/no-unassigned-import": "off",
+    "import/no-nodejs-modules": "off",
+    "import/consistent-type-specifier-style": "off",
+
+    // ── Enforce snake_case filenames ──
+    "unicorn/filename-case": ["error", { "cases": { "snakeCase": true } }],
+
+    // ── Disable false positives for SolidJS ref pattern (let ref!: Element) ──
+    "eslint/no-unassigned-vars": "off",
+
+    // ── Explicitly enabled correctness rules ──
+    "no-unused-vars": "error",
+    "no-debugger": "error",
+    "no-duplicate-case": "error",
+    "no-self-compare": "error",
+
+    // ── Explicitly enabled suspicious rules ──
+    "no-console": "warn",
+    "no-empty": "warn",
+    "no-extra-boolean-cast": "warn",
+    "no-constant-condition": "warn",
+
+    // ── TypeScript rules (AST-based) ──
+    "typescript/no-explicit-any": "warn",
+    "typescript/no-non-null-assertion": "warn",
+
+    // ── TypeScript rules (type-aware, requires --type-aware flag) ──
+    "typescript/no-unnecessary-type-assertion": "warn",
+    "typescript/no-unsafe-type-assertion": "off",
+    "typescript/await-thenable": "error",
+    "typescript/no-floating-promises": "error",
+    "typescript/no-misused-promises": "error",
+    "typescript/consistent-indexed-object-style": "off",
+
+    // ── Import rules ──
+    "import/no-duplicates": "error",
+    "import/no-self-import": "error",
+    "import/no-cycle": "warn",
+
+    // ── Unicorn rules ──
+    "unicorn/no-unnecessary-await": "error",
+    "unicorn/no-useless-spread": "warn",
+    "unicorn/prefer-array-flat-map": "warn",
+    "unicorn/prefer-node-protocol": "error"
+  },
+  "settings": {
+    "jsx-a11y": {
+      "polymorphicPropName": null,
+      "components": {},
+      "attributes": {}
+    },
+    "jsdoc": {
+      "ignorePrivate": false,
+      "ignoreInternal": false,
+      "ignoreReplacesDocs": true,
+      "overrideReplacesDocs": true,
+      "augmentsExtendsReplacesDocs": false,
+      "implementsReplacesDocs": false,
+      "exemptDestructuredRootsFromChecks": false,
+      "tagNamePreference": {}
+    }
+  },
+  "env": {
+    "builtin": true,
+    "browser": true
+  },
+  "globals": {},
+  "ignorePatterns": ["**/dist"]
+}

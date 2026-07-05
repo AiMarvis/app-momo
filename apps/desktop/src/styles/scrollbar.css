@@ -1,0 +1,77 @@
+/* OverlayScrollbars — Momo custom theme (VSCode/Zed style square scrollbar) */
+
+.os-theme-kuku {
+  --os-size: var(--scrollbar-size, 8px);
+  --os-padding-perpendicular: 0px;
+  --os-padding-axis: 0px;
+
+  /* Track — square, subtle background */
+  --os-track-border-radius: 0;
+  --os-track-bg: transparent;
+  --os-track-bg-hover: color-mix(in srgb, var(--color-text-muted) 10%, transparent);
+  --os-track-bg-active: color-mix(in srgb, var(--color-text-muted) 10%, transparent);
+
+  /* Handle — square, fills track width */
+  --os-handle-border-radius: 0;
+  --os-handle-bg: color-mix(in srgb, var(--color-text-muted) 25%, transparent);
+  --os-handle-bg-hover: color-mix(in srgb, var(--color-text-muted) 45%, transparent);
+  --os-handle-bg-active: color-mix(in srgb, var(--color-text-muted) 55%, transparent);
+  --os-handle-min-size: 20px;
+  --os-handle-perpendicular-size: 100%;
+  --os-handle-perpendicular-size-hover: 100%;
+  --os-handle-perpendicular-size-active: 100%;
+  --os-handle-interactive-area-offset: 4px;
+}
+
+/* ── Show track background while scrolling (handle is being dragged or scrollbar visible) ── */
+
+.os-theme-kuku > .os-scrollbar-handle:active,
+.os-theme-kuku > .os-scrollbar:hover {
+  --os-track-bg: color-mix(in srgb, var(--color-text-muted) 8%, transparent);
+}
+
+/* ── Transparent track modifier ── */
+
+.os-theme-kuku-transparent-track {
+  --os-track-bg: transparent;
+  --os-track-bg-hover: transparent;
+  --os-track-bg-active: transparent;
+}
+
+.os-theme-kuku-transparent-track > .os-scrollbar-handle:active,
+.os-theme-kuku-transparent-track > .os-scrollbar:hover {
+  --os-track-bg: transparent;
+}
+
+/* ── Always visible variant ── */
+
+.os-theme-kuku-visible {
+  --os-track-bg: color-mix(in srgb, var(--color-text-muted) 6%, transparent);
+  --os-handle-bg: color-mix(in srgb, var(--color-text-muted) 20%, transparent);
+}
+
+/* ── Tab bar: library DOM we can't add Tailwind classes to ── */
+
+.tab-bar .os-scrollbar-horizontal {
+  top: 0;
+  bottom: auto;
+}
+
+.tab-bar-tabs [data-scroll-area-content] {
+  display: flex;
+  align-items: center;
+  padding: 0 2px;
+}
+
+/* ── Native scroll area without visible rails ── */
+
+[data-kuku-scrollbar-hidden="true"] {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+[data-kuku-scrollbar-hidden="true"]::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}

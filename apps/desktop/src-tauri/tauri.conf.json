@@ -1,0 +1,63 @@
+{
+  "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
+  "productName": "Momo",
+  "version": "0.5.10",
+  "identifier": "mom.momo.app",
+  "build": {
+    "frontendDist": "../dist",
+    "devUrl": "http://127.0.0.1:1420",
+    "beforeDevCommand": "pnpm --filter @kuku/desktop dev",
+    "beforeBuildCommand": "pnpm --filter @kuku/desktop build"
+  },
+  "plugins": {
+    "deep-link": {
+      "desktop": {
+        "schemes": ["momo", "com.momo.app", "kuku", "com.kuku.app"]
+      }
+    },
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEE0NzY0NDQ1NUU2RDI4QzIKUldUQ0tHMWVSVVIycExseTkyWGEyeU1CTHdadXBVVTh1aDkzYTVtOUVFRFBCTGMvVGRGVGhVZGUK",
+      "endpoints": ["https://www.kuku.mom/release.json"]
+    }
+  },
+  "app": {
+    "security": {
+      "csp": null
+    },
+    "windows": [
+      {
+        "title": "Momo",
+        "width": 1100,
+        "height": 720,
+        "minWidth": 900,
+        "minHeight": 700,
+        "resizable": true,
+        "fullscreen": false,
+        "center": true,
+        "titleBarStyle": "Overlay",
+        "hiddenTitle": true,
+        "trafficLightPosition": {
+          "x": 16,
+          "y": 18
+        }
+      }
+    ]
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["dmg", "app"],
+    "createUpdaterArtifacts": true,
+    "icon": [
+      "icons/release/32x32.png",
+      "icons/release/128x128.png",
+      "icons/release/128x128@2x.png",
+      "icons/release/icon.icns",
+      "icons/release/icon.ico"
+    ],
+    "macOS": {
+      "minimumSystemVersion": "10.15",
+      "entitlements": "entitlements.plist",
+      "infoPlist": "Info.plist"
+    }
+  }
+}

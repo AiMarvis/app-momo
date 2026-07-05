@@ -1,0 +1,595 @@
+// ── Editor Context Menu ──
+//
+// Right-click context menu for the markdown editor.
+// Provides quick access to formatting commands, clipboard operations,
+// block transforms ("Turn Into"), and AI-powered editing skills.
+//
+// Phases:
+//   1 — Formatting icon grid + Clipboard
+//   2 — Turn Into submenu (block type transforms)
+//   3 — AI Skills Pattern B (Explain / Summarize → Chat panel via Inline mode)
+//   4 — AI Skills Pattern A (Improve / Proofread / Translate → Inline edit prompts)
+//   5 — Edit with AI (free-form inline prompt via `onRequestAiEdit` callback)
+
+import { createSignal, For, type JSX } from "solid-js";
+import { ContextMenu as KMenu } from "@kobalte/core/context-menu";
+
+import {
+  ContextMenuContent,
+  ContextMenuIconButton,
+  ContextMenuItem,
+  ContextMenuSeparator,
+  ContextMenuSub,
+  ContextMenuSubContent,
+  ContextMenuSubTrigger,
+} from "~/components/ui";
+import {
+  BoldIcon,
+  CodeIcon,
+  Heading1Icon,
+  Heading2Icon,
+  Heading3Icon,
+  ItalicIcon,
+  LinkIcon,
+  SparklesIcon,
+  StrikethroughIcon,
+} from "~/components/icons";
+import { t } from "~/i18n";
+import { getActiveEditorInstance } from "~/components/editor/system/editor_engine";
+import {
+  getEditorSlashItems,
+  readEditorSlashItemState,
+  type EditorSlashItem,
+  type EditorSlashItemState,
+} from "~/plugins/builtin/core_editor/slash_items";
+import { getAllCommands } from "~/plugins/commands";
+import { sendMessage, switchMode } from "~/plugins/builtin/ai_chat/chat_store";
+import { openRightPanelView } from "~/stores/layout";
+
+// ── Types ──
+
+interface EditorContextMenuProps {
+  children: JSX.Element;
+  /**
+   * Callback fired when the user picks "Edit with AI" from the menu.
+   * The parent component should show a floating input prompt near the
+   * current selection so the user can type a free-form instruction.
+   */
+  onRequestAiEdit?: () => void;
+}
+
+/** Loosely-typed ProseKit command function (with optional canExec guard). */
+type EditorCmd = ((...args: unknown[]) => void) & {
+  canExec?(...args: unknown[]): boolean;
+};
+
+// ── AI Skill Prompt Templates ──
+
+const EDIT_FILE_PREFIX =
+  `Edit the current active file by replacing only the selected text. ` +
+  `Use the edit_file tool on the active file, preserve all unrelated content, ` +
+  `and do not reply with a conversational answer in chat. `;
+
+const AI_SKILL_PROMPTS: Record<string, () => string> = {
+  improve: () =>
+    `${EDIT_FILE_PREFIX}Make the selected text clearer and more polished while keeping the same meaning and tone.`,
+
+  proofread: () =>
+    `${EDIT_FILE_PREFIX}Proofread the selected text. Fix grammar, spelling, and punctuation only. Do not change the meaning or style.`,
+
+  translate: () =>
+    `${EDIT_FILE_PREFIX}Translate the selected text. If the text is in Korean, translate it to English. If the text is in English, translate it to Korean.`,
+
+  explain: () =>
+    `${EDIT_FILE_PREFIX}Rewrite the selected text so the underlying idea is easier to understand. Add brief clarifying detail where needed, but keep the original facts aligned with the source.`,
+
+  summarize: () =>
+    `${EDIT_FILE_PREFIX}Rewrite the selected text as a concise summary that preserves the key points.`,
+};
+
+// ── Helpers ──
+
+/**
+ * Safely retrieve the commands map from the active ProseKit editor.
+ * Returns null when no editor is mounted.
+ */
+function getEditorCommands(): Record<string, EditorCmd> | null {
+  const editor = getActiveEditorInstance();
+  if (!editor) return null;
+  return (editor as unknown as { commands: Record<string, EditorCmd> }).commands;
+}
+
+/** Focus the editor after the context menu finishes closing. */
+function queueEditorFocusRestore(): void {
+  requestAnimationFrame(() => {
+    getActiveEditorInstance()?.view?.focus();
+  });
+}
+
+/**
+ * Get the plain text of the current selection.
+ * Returns null when the selection is collapsed (cursor-only).
+ */
+function getSelectedText(): string | null {
+  const editor = getActiveEditorInstance();
+  if (!editor?.view) return null;
+
+  const { from, to, empty } = editor.view.state.selection;
+  if (empty) return null;
+
+  return editor.view.state.doc.textBetween(from, to, "\n");
+}
+
+/**
+ * Check whether a mark is active at the current selection.
+ *
+ * - Empty selection → checks stored marks / marks at cursor.
+ * - Range selection → checks whether the range contains the mark.
+ */
+function isMarkActive(markName: string): boolean {
+  const editor = getActiveEditorInstance();
+  if (!editor?.view) return false;
+
+  const state = editor.view.state;
+  const markType = state.schema.marks[markName];
+  if (!markType) return false;
+
+  const { from, $from, to, empty } = state.selection;
+  if (empty) {
+    return Boolean(markType.isInSet(state.storedMarks || $from.marks()));
+  }
+  return state.doc.rangeHasMark(from, to, markType);
+}
+
+/** Check whether the AI chat plugin is registered. */
+function isAiChatAvailable(): boolean {
+  return getAllCommands().some((reg) => reg.contribution.id === "ai-chat.openPanel");
+}
+
+function isSelectionInsideTable(): boolean {
+  const editor = getActiveEditorInstance();
+  if (!editor?.view) return false;
+
+  const { $from } = editor.view.state.selection;
+  for (let depth = $from.depth; depth > 0; depth -= 1) {
+    if ($from.node(depth).type.name === "table") return true;
+  }
+
+  return false;
+}
+
+// ── Component ──
+
+export default function EditorContextMenu(props: EditorContextMenuProps) {
+  // Snapshot signals — captured once when the menu opens so item states
+  // remain stable while the menu is visible.
+  const [hasSelection, setHasSelection] = createSignal(false);
+  const [activeMarks, setActiveMarks] = createSignal(new Set());
+  const [headingLevel, setHeadingLevel] = createSignal(0);
+  const [insideTable, setInsideTable] = createSignal(false);
+  const [editorBlockState, setEditorBlockState] = createSignal<EditorSlashItemState>({
+    blockType: "paragraph",
+    headingLevel: 0,
+    listKind: null,
+    insideBlockquote: false,
+  });
+  let pendingAiEditRequest = false;
+
+  // ── State Snapshot ──
+
+  /** Capture the editor's selection and formatting state. */
+  function snapshotEditorState(): void {
+    const editor = getActiveEditorInstance();
+    if (!editor?.view) return;
+
+    const { empty } = editor.view.state.selection;
+    setHasSelection(!empty);
+
+    // Active inline marks
+    const marks = new Set<string>();
+    for (const name of ["bold", "italic", "strike", "code", "link"]) {
+      if (isMarkActive(name)) marks.add(name);
+    }
+    setActiveMarks(marks);
+
+    // Block-level state
+    const blockState = readEditorSlashItemState(editor.view);
+    setHeadingLevel(blockState.headingLevel);
+    setEditorBlockState(blockState);
+    setInsideTable(isSelectionInsideTable());
+  }
+
+  function handleOpenChange(open: boolean): void {
+    if (open) {
+      snapshotEditorState();
+    } else {
+      if (pendingAiEditRequest) {
+        pendingAiEditRequest = false;
+        requestAnimationFrame(() => {
+          props.onRequestAiEdit?.();
+        });
+        return;
+      }
+      queueEditorFocusRestore();
+    }
+  }
+
+  // ── Formatting Actions (Phase 1) ──
+
+  /** Toggle an inline mark via its ProseKit command name (e.g. "toggleBold"). */
+  function toggleMark(commandName: string): void {
+    const cmds = getEditorCommands();
+    const cmd = cmds?.[commandName];
+    if (!cmd) return;
+    cmd();
+    queueEditorFocusRestore();
+  }
+
+  /** Toggle a heading level (1–6). Calling with the current level removes it. */
+  function toggleHeading(level: number): void {
+    const cmds = getEditorCommands();
+    const cmd = cmds?.toggleHeading;
+    if (!cmd) return;
+    cmd({ level });
+    queueEditorFocusRestore();
+  }
+
+  /**
+   * Toggle a link mark.
+   *
+   * - If the selection is already inside a link, remove it.
+   * - Otherwise prompt for a destination URL before applying the mark.
+   */
+  function toggleLink(): void {
+    const cmds = getEditorCommands();
+    if (!cmds) return;
+
+    if (activeMarks().has("link")) {
+      cmds.removeLink?.();
+      queueEditorFocusRestore();
+      return;
+    }
+
+    if (!hasSelection()) return;
+
+    const href = window.prompt(t("editor.link.prompt_title"), "https://")?.trim();
+    if (!href) {
+      queueEditorFocusRestore();
+      return;
+    }
+
+    cmds.toggleLink?.({ href });
+    queueEditorFocusRestore();
+  }
+
+  // ── Block Transform Actions (Phase 2) ──
+
+  function runTurnIntoItem(item: EditorSlashItem): void {
+    const editor = getActiveEditorInstance();
+    if (!editor) return;
+    void item.execute(editor);
+    queueEditorFocusRestore();
+  }
+
+  function getTurnIntoItems(): EditorSlashItem[] {
+    return getEditorSlashItems().filter((item) => item.showInContextMenu !== false);
+  }
+
+  function isTurnIntoItemDisabled(item: EditorSlashItem): boolean {
+    const editor = getActiveEditorInstance();
+    if (!editor) return true;
+    const isEnabled = item.isEnabled?.(editorBlockState(), editor);
+    return isEnabled === false;
+  }
+
+  function canRunTableCommand(commandName: string): boolean {
+    const cmds = getEditorCommands();
+    const cmd = cmds?.[commandName];
+    if (!cmd) return false;
+    return cmd.canExec?.() ?? true;
+  }
+
+  function runTableCommand(commandName: string): void {
+    const cmds = getEditorCommands();
+    const cmd = cmds?.[commandName];
+    if (!cmd) return;
+    cmd();
+    queueEditorFocusRestore();
+  }
+
+  // ── Clipboard Actions (Phase 1) ──
+
+  function handleClipboard(action: "cut" | "copy" | "paste"): void {
+    requestAnimationFrame(() => {
+      const editor = getActiveEditorInstance();
+      if (!editor?.view) return;
+      editor.view.focus();
+      document.execCommand(action);
+    });
+  }
+
+  // ── AI Skill Actions ──
+
+  /**
+   * Send an AI skill request to the chat panel in Inline mode.
+   *
+   * 1. Confirms the editor has selected text.
+   * 2. Builds an edit instruction from the skill template.
+   * 3. Opens the AI Chat panel.
+   * 4. Switches to Inline mode and sends the instruction.
+   *
+   * Selected text and active file context are attached by the chat store.
+   * The prompt explicitly tells the model to edit the current file instead
+   * of replying conversationally in chat.
+   */
+  async function handleAiSkill(skill: string): Promise<void> {
+    if (!isAiChatAvailable()) return;
+
+    const selected = getSelectedText();
+    if (!selected) return;
+
+    const buildPrompt = AI_SKILL_PROMPTS[skill];
+    if (!buildPrompt) return;
+
+    const prompt = buildPrompt();
+
+    // Open the AI chat panel and ensure Inline mode.
+    openRightPanelView("ai-chat.panel");
+    await switchMode("inline");
+
+    // Small delay to let the panel mount before sending
+    await new Promise((r) => setTimeout(r, 80));
+
+    try {
+      await sendMessage(prompt, { includeSelectedText: true });
+    } catch {
+      // If sending fails the chat panel will show the error state.
+    }
+  }
+
+  // ── Edit with AI (Phase 5) ──
+
+  /**
+   * Trigger the inline "Edit with AI" flow.
+   *
+   * Instead of sending a preset prompt, this notifies the parent component
+   * (via the `onRequestAiEdit` prop) that the floating instruction input
+   * should appear near the current selection. The actual prompt composition
+   * and AI invocation happen in the floating input component.
+   */
+  function handleEditWithAi(): void {
+    if (!isAiChatAvailable()) return;
+    pendingAiEditRequest = true;
+  }
+
+  // ── Render ──
+
+  return (
+    <KMenu onOpenChange={handleOpenChange}>
+      <KMenu.Trigger class="block min-h-full">{props.children}</KMenu.Trigger>
+
+      <ContextMenuContent class="w-52">
+        {/* ── Formatting: same white/elevated surface as body — hairlines only ── */}
+        <div class="mb-1 space-y-1.5 px-1.5 pt-0.5">
+          <div class="flex flex-wrap items-center justify-start gap-0.5">
+            <ContextMenuIconButton
+              onSelect={() => toggleMark("toggleBold")}
+              active={activeMarks().has("bold")}
+              title={t("editor.tooltip.bold")}
+            >
+              <BoldIcon size={14} />
+            </ContextMenuIconButton>
+
+            <ContextMenuIconButton
+              onSelect={() => toggleMark("toggleItalic")}
+              active={activeMarks().has("italic")}
+              title={t("editor.tooltip.italic")}
+            >
+              <ItalicIcon size={14} />
+            </ContextMenuIconButton>
+
+            <ContextMenuIconButton
+              onSelect={() => toggleMark("toggleStrike")}
+              active={activeMarks().has("strike")}
+              title={t("editor.tooltip.strikethrough")}
+            >
+              <StrikethroughIcon size={14} />
+            </ContextMenuIconButton>
+
+            <ContextMenuIconButton
+              onSelect={() => toggleMark("toggleCode")}
+              active={activeMarks().has("code")}
+              title={t("editor.tooltip.inline_code")}
+            >
+              <CodeIcon size={14} />
+            </ContextMenuIconButton>
+
+            <ContextMenuIconButton
+              onSelect={toggleLink}
+              active={activeMarks().has("link")}
+              disabled={!hasSelection() && !activeMarks().has("link")}
+              title={t("editor.tooltip.link")}
+            >
+              <LinkIcon size={14} />
+            </ContextMenuIconButton>
+          </div>
+
+          <div class="kuku-cm-hairline h-px w-full" role="presentation" />
+
+          <div class="flex flex-wrap items-center justify-start gap-0.5">
+            <ContextMenuIconButton
+              onSelect={() => toggleHeading(1)}
+              active={headingLevel() === 1}
+              title={t("editor.tooltip.heading1")}
+            >
+              <Heading1Icon size={14} />
+            </ContextMenuIconButton>
+
+            <ContextMenuIconButton
+              onSelect={() => toggleHeading(2)}
+              active={headingLevel() === 2}
+              title={t("editor.tooltip.heading2")}
+            >
+              <Heading2Icon size={14} />
+            </ContextMenuIconButton>
+
+            <ContextMenuIconButton
+              onSelect={() => toggleHeading(3)}
+              active={headingLevel() === 3}
+              title={t("editor.tooltip.heading3")}
+            >
+              <Heading3Icon size={14} />
+            </ContextMenuIconButton>
+          </div>
+        </div>
+
+        <ContextMenuSeparator />
+
+        {/* ── Turn Into (Phase 2) ── */}
+        <ContextMenuSub>
+          <ContextMenuSubTrigger label={t("editor.turn_into")} />
+          <ContextMenuSubContent>
+            <For each={getTurnIntoItems()}>
+              {(item, index) => (
+                <>
+                  {index() > 0 && getTurnIntoItems()[index() - 1]?.group !== item.group ? (
+                    <ContextMenuSeparator />
+                  ) : null}
+                  <ContextMenuItem
+                    label={item.title}
+                    onSelect={() => runTurnIntoItem(item)}
+                    disabled={isTurnIntoItemDisabled(item)}
+                  />
+                </>
+              )}
+            </For>
+          </ContextMenuSubContent>
+        </ContextMenuSub>
+
+        {insideTable() ? (
+          <>
+            <ContextMenuSeparator />
+
+            <ContextMenuSub>
+              <ContextMenuSubTrigger label={t("editor.table.menu")} />
+              <ContextMenuSubContent>
+                <ContextMenuItem
+                  label={t("editor.table.add_row_above")}
+                  onSelect={() => runTableCommand("addTableRowAbove")}
+                  disabled={!canRunTableCommand("addTableRowAbove")}
+                />
+                <ContextMenuItem
+                  label={t("editor.table.add_row_below")}
+                  onSelect={() => runTableCommand("addTableRowBelow")}
+                  disabled={!canRunTableCommand("addTableRowBelow")}
+                />
+                <ContextMenuSeparator />
+                <ContextMenuItem
+                  label={t("editor.table.add_column_before")}
+                  onSelect={() => runTableCommand("addTableColumnBefore")}
+                  disabled={!canRunTableCommand("addTableColumnBefore")}
+                />
+                <ContextMenuItem
+                  label={t("editor.table.add_column_after")}
+                  onSelect={() => runTableCommand("addTableColumnAfter")}
+                  disabled={!canRunTableCommand("addTableColumnAfter")}
+                />
+                <ContextMenuSeparator />
+                <ContextMenuItem
+                  label={t("editor.table.select_table")}
+                  onSelect={() => runTableCommand("selectTable")}
+                  disabled={!canRunTableCommand("selectTable")}
+                />
+                <ContextMenuSeparator />
+                <ContextMenuItem
+                  label={t("editor.table.delete_row")}
+                  onSelect={() => runTableCommand("deleteTableRow")}
+                  disabled={!canRunTableCommand("deleteTableRow")}
+                />
+                <ContextMenuItem
+                  label={t("editor.table.delete_column")}
+                  onSelect={() => runTableCommand("deleteTableColumn")}
+                  disabled={!canRunTableCommand("deleteTableColumn")}
+                />
+                <ContextMenuItem
+                  label={t("editor.table.delete_table")}
+                  onSelect={() => runTableCommand("deleteTable")}
+                  disabled={!canRunTableCommand("deleteTable")}
+                />
+              </ContextMenuSubContent>
+            </ContextMenuSub>
+          </>
+        ) : null}
+
+        <ContextMenuSeparator />
+
+        {/* ── Clipboard (Phase 1) ── */}
+        <ContextMenuItem
+          label={t("editor.clipboard.cut")}
+          shortcut="⌘X"
+          onSelect={() => handleClipboard("cut")}
+          disabled={!hasSelection()}
+        />
+        <ContextMenuItem
+          label={t("editor.clipboard.copy")}
+          shortcut="⌘C"
+          onSelect={() => handleClipboard("copy")}
+          disabled={!hasSelection()}
+        />
+        <ContextMenuItem
+          label={t("editor.clipboard.paste")}
+          shortcut="⌘V"
+          onSelect={() => handleClipboard("paste")}
+        />
+
+        <ContextMenuSeparator />
+
+        {/* ── AI skills: plain label row (avoids Kobalte group default vertical padding) ── */}
+        <div class="m-0 p-0" role="group" aria-label={t("editor.ai.skills")}>
+          <div
+            class="mb-1 flex min-h-0 items-center gap-1.5 px-2.5 py-0.5 text-[0.625rem] leading-tight font-medium text-text-muted/75 select-none"
+            role="presentation"
+          >
+            <SparklesIcon size={10} class="shrink-0 text-text-muted/60" />
+            <span>{t("editor.ai.skills")}</span>
+          </div>
+          <ContextMenuItem
+            label={t("editor.ai.improve_writing")}
+            onSelect={() => void handleAiSkill("improve")}
+            disabled={!hasSelection() || !isAiChatAvailable()}
+          />
+          <ContextMenuItem
+            label={t("editor.ai.proofread")}
+            onSelect={() => void handleAiSkill("proofread")}
+            disabled={!hasSelection() || !isAiChatAvailable()}
+          />
+          <ContextMenuItem
+            label={t("editor.ai.explain")}
+            onSelect={() => void handleAiSkill("explain")}
+            disabled={!hasSelection() || !isAiChatAvailable()}
+          />
+          <ContextMenuItem
+            label={t("editor.ai.summarize")}
+            onSelect={() => void handleAiSkill("summarize")}
+            disabled={!hasSelection() || !isAiChatAvailable()}
+          />
+          <ContextMenuItem
+            label={t("editor.ai.translate")}
+            onSelect={() => void handleAiSkill("translate")}
+            disabled={!hasSelection() || !isAiChatAvailable()}
+          />
+        </div>
+
+        <ContextMenuSeparator />
+
+        {/* ── Edit with AI — free-form (Phase 5) ── */}
+        <ContextMenuItem
+          label={t("editor.ai.edit_with_ai")}
+          shortcut="⌘⌃E"
+          onSelect={handleEditWithAi}
+          disabled={!isAiChatAvailable()}
+        />
+      </ContextMenuContent>
+    </KMenu>
+  );
+}

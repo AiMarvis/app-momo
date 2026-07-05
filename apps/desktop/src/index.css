@@ -1,0 +1,537 @@
+@import "tailwindcss";
+@import "./styles/vendor/overlayscrollbars.css";
+@import "./styles/font.css";
+@import "./styles/scrollbar.css";
+@import "./styles/editor.css";
+@import "./styles/ai_chat.css";
+@import "./styles/ai_chat_transcript.css";
+@import "./styles/resize_grip.css";
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Momo Theme Tokens
+   ───────────────────────────────────────────────────────────────────────────
+   Semantic layers based on Zed's token classification:
+     1. Surface    — background hierarchy (primary → elevated)
+     2. Element    — interactive with own background (buttons, inputs)
+     3. Ghost      — interactive blending with surface (sidebar items, menus)
+     4. Text       — text hierarchy
+     5. Icon       — icon hierarchy
+     6. Border     — border hierarchy
+     7. Status     — semantic colors (error, warning, success, info)
+     8. Diff       — file/content change states
+     9. Accent     — brand / emphasis
+    10. List       — list selection states
+    11. Typography — font stacks
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@theme {
+  /* ── 1. Surface ── */
+  --color-bg-primary: #1a1a1a;
+  --color-bg-secondary: #1f1f1f;
+  --color-bg-tertiary: #262626;
+  --color-bg-elevated: #2a2a2a;
+
+  /* ── 2. Element (buttons, inputs, controls) ── */
+  --color-element: #2a2a2a;
+  --color-element-hover: #333333;
+  --color-element-active: #3a3a3a;
+  --color-element-selected: #363636;
+  --color-element-disabled: #222222;
+
+  /* ── 3. Ghost element (sidebar items, menu items — blends with surface) ── */
+  --color-ghost-hover: rgba(255, 255, 255, 0.05);
+  --color-ghost-active: rgba(255, 255, 255, 0.08);
+  --color-ghost-selected: rgba(255, 255, 255, 0.1);
+
+  /* ── 4. Text (neutral, no cool/slate) ── */
+  --color-text-primary: #d4d4d4;
+  --color-text-secondary: #969696;
+  --color-text-muted: #6a6a6a;
+  --color-text-placeholder: #4a4a4a;
+  --color-text-disabled: #3a3a3a;
+  /* UI emphasis / focus — not blue */
+  --color-text-accent: #c0c0c0;
+
+  /* ── 5. Icon ── */
+  --color-icon: #b8b8b8;
+  --color-icon-muted: #707070;
+  --color-icon-disabled: #3a3a3a;
+  --color-icon-accent: #b8b8b8;
+
+  /* ── 6. Border ── */
+  --color-border: #2a2a2a;
+  --color-border-variant: #232323;
+  --color-border-focused: #5a5a5a;
+  --color-border-selected: #8a8a8a;
+  /* Table grid: same as ProseMirror `hr` (---) for a consistent rule weight */
+  --editor-table-border: var(--color-border);
+  /* MomoLogoSmall body + mouth (not `currentColor`: bg-secondary matches the dark canvas) */
+  --color-kuku-mark-stroke: #ffffff;
+
+  /* ── 7. Status ── */
+  --color-error: #e55561;
+  --color-error-bg: rgba(229, 85, 97, 0.12);
+  --color-error-border: rgba(229, 85, 97, 0.3);
+
+  --color-warning: #e5a644;
+  --color-warning-bg: rgba(229, 166, 68, 0.12);
+  --color-warning-border: rgba(229, 166, 68, 0.3);
+
+  --color-success: #6bc46d;
+  --color-success-bg: rgba(107, 196, 109, 0.12);
+  --color-success-border: rgba(107, 196, 109, 0.3);
+
+  --color-info: #8a8a8a;
+  --color-info-bg: rgba(200, 200, 200, 0.08);
+  --color-info-border: rgba(200, 200, 200, 0.2);
+
+  /* ── 8. Diff ── */
+  --color-created: #6bc46d;
+  --color-modified: #a89a6e;
+  --color-deleted: #e55561;
+  --color-conflict: #e5a644;
+
+  /* ── 9. Accent ── */
+  --color-accent: #d4d4d4;
+  --color-accent-dim: rgba(212, 212, 212, 0.12);
+
+  /* ── 10. List ── */
+  --color-list-active: rgba(212, 212, 212, 0.13);
+  --color-list-inactive: rgba(212, 212, 212, 0.07);
+
+  /* ── 11. Typography ── */
+  --font-ui:
+    "Emoji", "Goorm Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu,
+    Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+  --font-editor:
+    "Emoji", "Goorm Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu,
+    Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+  --font-mono:
+    "Goorm Sans Code", "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace,
+    "Emoji";
+
+  /* ── 12. Radius (Zed-style: tight, near-flat) ── */
+  --radius-xs: 2px;
+  --radius-sm: 2px;
+  --radius-md: 3px;
+  --radius-lg: 3px;
+  --radius-xl: 4px;
+  --radius-2xl: 4px;
+
+  /* ── 13. Shadow (very light — menus, popovers, command palette) ── */
+  --shadow-soft-1: 0 1px 2px rgba(0, 0, 0, 0.06);
+  --shadow-soft-2: 0 1px 4px rgba(0, 0, 0, 0.07), 0 1px 1px rgba(0, 0, 0, 0.05);
+  --shadow-popover:
+    0 8px 22px rgba(0, 0, 0, 0.12), 0 1px 4px rgba(0, 0, 0, 0.08),
+    0 0 0 1px rgba(255, 255, 255, 0.025);
+  --shadow-command-bubble:
+    0 4px 14px rgba(0, 0, 0, 0.07), 0 1px 3px rgba(0, 0, 0, 0.05),
+    0 0 0 1px rgba(255, 255, 255, 0.025);
+  --shadow-context-surface: 0 2px 12px rgba(0, 0, 0, 0.04), 0 1px 1px rgba(0, 0, 0, 0.03);
+
+  /* ── 14. Graph view (semantic role tokens for Canvas2D) ──
+     `var(...)` is intentionally inlined as literal hex/rgba so
+     `getComputedStyle().getPropertyValue()` returns a value Canvas
+     accepts directly without var() resolution edge-cases. */
+  --color-graph-node-orphan: #727780;
+  --color-graph-node-selected: #f4f4f0;
+  --color-graph-node-current: #b794f6;
+  --color-graph-node-stroke-strong: #f0ebff;
+  --color-graph-node-stroke-soft: rgba(235, 229, 255, 0.52);
+  --color-graph-node-stroke-faint: rgba(235, 229, 255, 0.18);
+  --color-graph-link-default: rgba(150, 162, 178, 0.24);
+  --color-graph-link-selected: rgba(244, 244, 240, 0.7);
+  --color-graph-link-current: rgba(183, 148, 246, 0.78);
+  /* Cluster label text lightness (HSL%) — vivid enough on dark without neon glare */
+  --color-graph-cluster-text-l: 72%;
+
+  /* ── Agent World ──
+     These are intentionally concrete colors so WebGL can consume them through
+     getComputedStyle without nested var() resolution surprises. */
+  --color-voxel-shell-bg: #0b2138;
+  --color-voxel-shell-bg-soft: rgba(11, 33, 56, 0.92);
+  --color-voxel-shell-border: #12679d;
+  --color-voxel-shell-text: #d8c27a;
+  --color-voxel-shell-muted: #9b9b90;
+  --color-voxel-shell-hover: rgba(18, 103, 157, 0.24);
+  --color-voxel-shell-active: rgba(200, 58, 43, 0.28);
+  --color-voxel-world-sky: #0b2138;
+  --color-voxel-world-sky-mid: #0b3f63;
+  --color-voxel-world-sky-top: #07162a;
+  --color-voxel-world-sky-band: #c46d2e;
+  --color-voxel-world-sky-line: #d8c27a;
+  --color-voxel-world-sun: #d4a520;
+  --color-voxel-world-sun-glow: #c46d2e;
+  --color-voxel-world-fog: #0f3150;
+  --color-voxel-world-void: #0b2138;
+  --color-voxel-world-horizon: #133f63;
+  --color-voxel-world-water: #12679d;
+  --color-voxel-world-water-emissive: #0f9aa7;
+  --color-voxel-world-grass: #357f35;
+  --color-voxel-world-grass-edge: #6f8f28;
+  --color-voxel-world-grass-dark: #124f3a;
+  --color-voxel-world-sand: #b77545;
+  --color-voxel-world-sand-edge: #c6a052;
+  --color-voxel-world-dirt: #a5644c;
+  --color-voxel-world-dirt-dark: #744633;
+  --color-voxel-world-path: #c69724;
+  --color-voxel-world-rock: #526a73;
+  --color-voxel-world-wood: #7b4a2d;
+  --color-voxel-world-flower: #d4a520;
+  --color-voxel-world-leaf: #245f3f;
+  --color-voxel-world-leaf-light: #4d7f2c;
+  --color-voxel-office-floor: #c6a052;
+  --color-voxel-office-trim: #0f5d84;
+  --color-voxel-office-wall: #a8aa9d;
+  --color-voxel-office-low-wall: #475f66;
+  --color-voxel-label-bg: rgba(11, 33, 56, 0.92);
+  --color-voxel-label-text: #d8c27a;
+  --color-voxel-label-muted: #a89b73;
+
+  /* Editor / fenced code (VS Code–style dark surface, inset from page bg) */
+  --color-editor-code-bg: #1e1e1e;
+  --color-editor-code-fg: #d4d4d4;
+  --color-editor-code-border: #3c3c3c;
+  --shadow-editor-code-inset: inset 0 1px 0 0 rgba(255, 255, 255, 0.06);
+  /* Backtick / inline `code` — never link-accent (blue); neutral chip */
+  --color-editor-inline-code-fg: #e4e4e4;
+  --color-editor-inline-code-bg: #303030;
+  /* Syntax (Atom One Dark) */
+  --syntax-default: #abb2bf;
+  --syntax-comment: #5c6370;
+  --syntax-keyword: #c678dd;
+  --syntax-string: #98c379;
+  --syntax-function: #61aeee;
+  --syntax-number: #d19a66;
+  --syntax-operator: #abb2bf;
+  --syntax-punctuation: #abb2bf;
+  --syntax-type: #d19a66;
+  --syntax-variable: #d19a66;
+  --syntax-property: #d19a66;
+  --syntax-namespace: #e06c75;
+  --syntax-tag: #e06c75;
+  --syntax-attr: #d19a66;
+  --syntax-attr-name: #d19a66;
+  --syntax-meta: #61aeee;
+  --syntax-builtin: #e6c07b;
+  --syntax-constant: #56b6c2;
+  --syntax-literal: #56b6c2;
+  --syntax-regexp: #98c379;
+  --syntax-title: #61aeee;
+  --syntax-selector: #e06c75;
+  --syntax-deletion: #e06c75;
+  --syntax-addition: #98c379;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Light Theme
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+[data-theme="light"] {
+  /* ── Surface (pure neutrals, no cool slate) ── */
+  --color-bg-primary: #fafafa;
+  --color-bg-secondary: #f1f1f1;
+  --color-bg-tertiary: #e8e8e8;
+  --color-bg-elevated: #ffffff;
+
+  /* ── Element ── */
+  --color-element: #ffffff;
+  --color-element-hover: #f1f1f1;
+  --color-element-active: #e8e8e8;
+  --color-element-selected: #ececec;
+  --color-element-disabled: #f5f5f5;
+
+  /* ── Ghost ── */
+  --color-ghost-hover: rgba(0, 0, 0, 0.05);
+  --color-ghost-active: rgba(0, 0, 0, 0.08);
+  --color-ghost-selected: rgba(0, 0, 0, 0.1);
+
+  /* ── Text ── */
+  --color-text-primary: #262626;
+  --color-text-secondary: #5a5a5a;
+  --color-text-muted: #8c8c8c;
+  --color-text-placeholder: #a8a8a8;
+  --color-text-disabled: #c0c0c0;
+  /* Emphasis & links: neutral, not #4078f2 */
+  --color-text-accent: #2a2a2a;
+
+  /* ── Icon ── */
+  --color-icon: #5a5a5a;
+  --color-icon-muted: #8c8c8c;
+  --color-icon-disabled: #c0c0c0;
+  --color-icon-accent: #2a2a2a;
+
+  /* ── Border ── */
+  --color-border: #d2d2d2;
+  --color-border-variant: #e5e5e5;
+  --color-border-focused: #8a8a8a;
+  --color-border-selected: #3a3a3a;
+  --editor-table-border: var(--color-border);
+  --color-kuku-mark-stroke: var(--color-bg-secondary);
+
+  /* ── Status ── */
+  --color-error: #e45649;
+  --color-error-bg: rgba(228, 86, 73, 0.08);
+  --color-error-border: rgba(228, 86, 73, 0.28);
+
+  --color-warning: #c18401;
+  --color-warning-bg: rgba(193, 132, 1, 0.08);
+  --color-warning-border: rgba(193, 132, 1, 0.28);
+
+  --color-success: #50a14f;
+  --color-success-bg: rgba(80, 161, 79, 0.08);
+  --color-success-border: rgba(80, 161, 79, 0.28);
+
+  --color-info: #525252;
+  --color-info-bg: rgba(0, 0, 0, 0.06);
+  --color-info-border: rgba(0, 0, 0, 0.12);
+
+  /* ── Diff ── */
+  --color-created: #50a14f;
+  --color-modified: #6a5a42;
+  --color-deleted: #e45649;
+  --color-conflict: #c18401;
+
+  /* ── Accent ── */
+  --color-accent: #262626;
+  --color-accent-dim: rgba(0, 0, 0, 0.08);
+
+  /* ── List ── */
+  --color-list-active: rgba(0, 0, 0, 0.1);
+  --color-list-inactive: rgba(0, 0, 0, 0.05);
+
+  /* ── Shadow (light) — neutral black, no slate base ── */
+  --shadow-soft-1: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-soft-2: 0 1px 4px rgba(0, 0, 0, 0.05), 0 1px 1px rgba(0, 0, 0, 0.03);
+  --shadow-popover:
+    0 8px 22px rgba(0, 0, 0, 0.06), 0 1px 4px rgba(0, 0, 0, 0.04), 0 0 0 1px rgba(0, 0, 0, 0.04);
+  --shadow-command-bubble:
+    0 4px 14px rgba(0, 0, 0, 0.04), 0 1px 3px rgba(0, 0, 0, 0.03), 0 0 0 1px rgba(0, 0, 0, 0.04);
+  --shadow-context-surface: 0 2px 10px rgba(0, 0, 0, 0.04), 0 1px 1px rgba(0, 0, 0, 0.03);
+
+  /* ── Graph view (light) ── */
+  --color-graph-node-orphan: #939aa5;
+  --color-graph-node-selected: #d6246f;
+  --color-graph-node-current: #6842c2;
+  --color-graph-node-stroke-strong: #8a1649;
+  --color-graph-node-stroke-soft: rgba(47, 39, 67, 0.36);
+  --color-graph-node-stroke-faint: rgba(47, 39, 67, 0.16);
+  --color-graph-link-default: rgba(48, 56, 70, 0.22);
+  --color-graph-link-selected: rgba(214, 36, 111, 0.56);
+  --color-graph-link-current: rgba(104, 66, 194, 0.62);
+  /* Light theme: darker cluster text so labels read on near-white pills */
+  --color-graph-cluster-text-l: 38%;
+
+  /* ── Agent World (light) ── */
+  --color-voxel-shell-bg: #b2a88f;
+  --color-voxel-shell-bg-soft: rgba(178, 168, 143, 0.9);
+  --color-voxel-shell-border: #12679d;
+  --color-voxel-shell-text: #0b2138;
+  --color-voxel-shell-muted: #4f5147;
+  --color-voxel-shell-hover: rgba(18, 103, 157, 0.2);
+  --color-voxel-shell-active: rgba(200, 58, 43, 0.24);
+  --color-voxel-world-sky: #a79b82;
+  --color-voxel-world-sky-mid: #6f8790;
+  --color-voxel-world-sky-top: #2a78a6;
+  --color-voxel-world-sky-band: #d8c27a;
+  --color-voxel-world-sky-line: #0f5d84;
+  --color-voxel-world-sun: #d4a520;
+  --color-voxel-world-sun-glow: #c46d2e;
+  --color-voxel-world-fog: #928a79;
+  --color-voxel-world-void: #a79b82;
+  --color-voxel-world-horizon: #5b7f8f;
+  --color-voxel-world-water: #12679d;
+  --color-voxel-world-water-emissive: #0f9aa7;
+  --color-voxel-world-grass: #3d8437;
+  --color-voxel-world-grass-edge: #738f2d;
+  --color-voxel-world-grass-dark: #255f3d;
+  --color-voxel-world-sand: #b77545;
+  --color-voxel-world-sand-edge: #c6a052;
+  --color-voxel-world-dirt: #a5644c;
+  --color-voxel-world-dirt-dark: #7b4a2d;
+  --color-voxel-world-path: #c69724;
+  --color-voxel-world-rock: #526a73;
+  --color-voxel-world-wood: #7b4a2d;
+  --color-voxel-world-flower: #d4a520;
+  --color-voxel-world-leaf: #245f3f;
+  --color-voxel-world-leaf-light: #4d7f2c;
+  --color-voxel-office-floor: #c6a052;
+  --color-voxel-office-trim: #0f5d84;
+  --color-voxel-office-wall: #b3b2a2;
+  --color-voxel-office-low-wall: #475f66;
+  --color-voxel-label-bg: rgba(225, 209, 154, 0.94);
+  --color-voxel-label-text: #0b2138;
+  --color-voxel-label-muted: #4f5147;
+
+  /* Editor / fenced + inline (neutral warm-grays) */
+  --color-editor-code-bg: #f0f0f0;
+  --color-editor-code-fg: #1a1a1a;
+  --color-editor-code-border: #c6c6c6;
+  --shadow-editor-code-inset: inset 0 1px 0 0 rgba(0, 0, 0, 0.06);
+  --color-editor-inline-code-fg: #1a1a1a;
+  --color-editor-inline-code-bg: #e6e6e6;
+  /* Syntax (Atom One Light) */
+  --syntax-default: #383a42;
+  --syntax-comment: #a0a1a7;
+  --syntax-keyword: #a626a4;
+  --syntax-string: #50a14f;
+  --syntax-function: #4078f2;
+  --syntax-number: #986801;
+  --syntax-operator: #383a42;
+  --syntax-punctuation: #383a42;
+  --syntax-type: #986801;
+  --syntax-variable: #986801;
+  --syntax-property: #986801;
+  --syntax-namespace: #e45649;
+  --syntax-tag: #e45649;
+  --syntax-attr: #986801;
+  --syntax-attr-name: #986801;
+  --syntax-meta: #4078f2;
+  --syntax-builtin: #c18401;
+  --syntax-constant: #0184bb;
+  --syntax-literal: #0184bb;
+  --syntax-regexp: #50a14f;
+  --syntax-title: #4078f2;
+  --syntax-selector: #e45649;
+  --syntax-deletion: #e45649;
+  --syntax-addition: #50a14f;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   AI chat markdown — inline `code` uses --color-editor-inline-code-* (not text-accent)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.kuku-md-message p > code,
+.kuku-md-message li > code,
+.kuku-md-message h1 > code,
+.kuku-md-message h2 > code,
+.kuku-md-message h3 > code,
+.kuku-md-message td > code,
+.kuku-md-message th > code,
+.kuku-md-message blockquote > code {
+  color: var(--color-editor-inline-code-fg);
+  background-color: var(--color-editor-inline-code-bg);
+}
+
+/* AI settings: tool list `<details>` chevron rotates when open */
+.kuku-ai-tools-details[open] .kuku-ai-tools-chevron {
+  transform: rotate(90deg);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Base Resets
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+* {
+  box-sizing: border-box;
+  -webkit-user-drag: none;
+  user-select: none;
+}
+
+/* Allow selection in editable areas */
+input,
+textarea,
+[contenteditable="true"],
+[contenteditable="true"] * {
+  user-select: text;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+body {
+  font-family: var(--font-ui);
+  background-color: var(--color-bg-primary);
+  color: var(--color-text-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+[data-accessibility-disabled="true"] button:focus,
+[data-accessibility-disabled="true"] button:focus-visible,
+[data-accessibility-disabled="true"] a:focus,
+[data-accessibility-disabled="true"] a:focus-visible,
+[data-accessibility-disabled="true"] [tabindex]:focus,
+[data-accessibility-disabled="true"] [tabindex]:focus-visible,
+[data-accessibility-disabled="true"] [role]:focus,
+[data-accessibility-disabled="true"] [role]:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Typing Indicator Animations
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes bounce-combo {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.3) rotate(2deg);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* Kobalte menu Separator: hairlines on context + dropdown (same as each other) */
+[data-kuku-menu-panel] .kuku-cm-separator {
+  margin-block: 0.375rem !important;
+  border: none !important;
+  background: none !important;
+  background-color: color-mix(
+    in srgb,
+    var(--color-text-muted) 12%,
+    var(--color-bg-elevated)
+  ) !important;
+  box-shadow: none !important;
+  opacity: 1 !important;
+}
+
+[data-kuku-menu-panel] .kuku-cm-hairline {
+  margin-block: 0.25rem;
+  background-color: color-mix(in srgb, var(--color-text-muted) 12%, var(--color-bg-elevated));
+}
+
+@utility animate-fade-in {
+  animation: fade-in 0.3s ease-out;
+}
+
+@utility animate-bounce-combo {
+  animation: bounce-combo 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+@utility animate-bounce-lg {
+  animation: bounce-lg 1s infinite;
+}
+
+@keyframes bounce-lg {
+  0%,
+  100% {
+    transform: translateY(-75%); /* Increased from the standard -25% */
+    animation-timing-function: cubic-bezier(0.8, 0, 1, 1);
+  }
+  50% {
+    transform: translateY(0);
+    animation-timing-function: cubic-bezier(0, 0, 0.2, 1);
+  }
+}

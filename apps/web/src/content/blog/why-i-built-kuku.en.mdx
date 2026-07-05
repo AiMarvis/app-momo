@@ -1,0 +1,103 @@
+---
+slug: why-i-built-momo
+lang: en
+date: "2026-01-24"
+title: Why I Built Momo
+excerpt: A native markdown editor with AI that actually edits your files.
+author: Gyeongtaek Kim
+image: /blog-1.webp
+imageAlt: Abstract line illustration on a dark grid background
+---
+
+_Translated from the Korean original using Claude Opus 4.7._
+
+Obsidian is great, but it's Electron. Notion is nice, but your data lives in the cloud. Apple Notes is native, but doesn't support Markdown.
+
+I wanted an editor that is:
+
+- Truly native (not Electron)
+- Stores files as plain markdown on my machine
+- Supports Obsidian-style `[[wikilinks]]` and backlinks
+- Has AI that can read and edit my documents directly (like Cursor)
+
+So I built it myself.
+
+## The Stack
+
+```
+Frontend: React 19 + TypeScript + Vite
+Editor:   Tiptap (ProseMirror-based)
+Backend:  Tauri v2 (Rust)
+Storage:  SQLite (FTS5 full-text search)
+AI:       Gemini API (tool calling)
+STT:      Whisper.cpp (local, offline)
+```
+
+Thanks to Tauri, bundle size is ~15MB and memory usage ~80MB. An equivalent Electron app would consume 200MB+.
+
+## What Makes It Different
+
+### Plain Markdown Files
+
+Your notes are stored as `.md` files. Open them in vim, version control with git, or open the same folder in Obsidian. No lock-in.
+
+### AI Agent, Not Just Chat
+
+This isn't a chatbot. Using Gemini's tool calling, the AI can actually:
+
+- Search your vault (`search_vault`)
+- Read, create, and edit files
+- Insert wikilinks automatically
+- Find related documents
+
+Ask it to "summarize last week's meeting notes" and it will search your vault, read the relevant files, and offer to create a new summary document.
+
+### Cursor-Style Edit Preview
+
+AI edits aren't applied directly. You see a diff and choose to Accept or Reject:
+
+```
+- Original content here.
++ AI-modified content here.
+
+[Keep] [Undo]
+```
+
+When editing multiple files, manage them all from a floating bar. `Cmd+Y` to Keep, `Cmd+N` to Undo.
+
+### Local Speech-to-Text
+
+Voice recognition runs locally with whisper.cpp. Download the model once, then it works completely offline. No API calls to OpenAI.
+
+### Full-Text Search
+
+SQLite FTS5 with BM25 ranking. Search through titles and full document content. Korean tokenization supported.
+
+## Honest Comparison
+
+|                  | Momo            | Obsidian      | Notion        |
+| ---------------- | --------------- | ------------- | ------------- |
+| Native app       | **Yes (Tauri)** | No (Electron) | No (Electron) |
+| Local files      | **Yes**         | Yes           | No            |
+| AI with tool use | **Yes**         | Chat only     | Limited       |
+| Edit preview     | **Yes**         | No            | No            |
+| Local STT        | **Yes**         | No            | No            |
+| Plugin ecosystem | No              | **Extensive** | Limited       |
+| Mobile           | No              | **Yes**       | **Yes**       |
+
+**Use Obsidian if** you need the plugin ecosystem or mobile apps.
+
+**Use Momo if** you want native performance, AI that edits your files, and local voice recognition.
+
+## What It's Not
+
+- **No cloud sync** — use iCloud or Dropbox folder directly
+- **No mobile app** — macOS only for now
+- **No collaboration** — this is for personal use
+- **No plugin system** — yet
+
+## Try It
+
+Momo is free to download. AI features require a subscription, but the core editor works without any account.
+
+Requirements: macOS 12.0+, Apple Silicon.
