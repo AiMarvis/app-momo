@@ -5,12 +5,12 @@
   "plugins": {
     "deep-link": {
       "desktop": {
-        "schemes": ["momo-preview", "com.momo.app.preview", "kuku-preview", "com.kuku.app.preview"]
+        "schemes": ["momo-preview", "com.momo.app.preview"]
       }
     },
     "updater": {
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEU0MkM1NEE0QzM3RDdGRkQKUldUOWYzM0RwRlFzNUxWbXlFbWZCYjRIcjZlUFVoL0lDTlJHeE1rejlIa2g1aHpHbEdGWjhrcjIK",
-      "endpoints": ["https://preview.kuku.mom/release.json"]
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDgwQjEwNkM5RURCOUZBRjkKUldUNStybnR5UWF4Z0ZuMXN1T2ZaL2w4MWpBQUFTMnozR0pqRzArV1g1T0lMQlJQR1JrRlhLSDIK",
+      "endpoints": ["https://github.com/AiMarvis/app-momo/releases/latest/download/latest.json"]
     }
   },
   "bundle": {
