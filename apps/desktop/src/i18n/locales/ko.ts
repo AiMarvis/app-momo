@@ -216,8 +216,9 @@ export const KO_MESSAGES = {
     "오른쪽 사이드바 탭 또는 명령으로 패널을 연 뒤, 하단 입력창에 질문을 입력하세요.",
   "settings.plugin.ai_chat.agent_provider.title": "에이전트 제공자",
   "settings.plugin.ai_chat.agent_provider.description":
-    "Codex CLI가 로컬 에이전트 작업을 실행해요. OpenAI API 키는 macOS Keychain에 저장되며 Codex가 준비되지 않았을 때 사용할 수 있어요.",
+    "Codex CLI 또는 OpenAI-compatible API로 로컬 에이전트 작업을 실행해요. API 키는 macOS Keychain에 저장돼요.",
   "settings.plugin.ai_chat.agent_provider.codex_ready": "Codex 준비됨",
+  "settings.plugin.ai_chat.agent_provider.api_ready": "Agent API 키 준비됨",
   "settings.plugin.ai_chat.agent_provider.openai_ready": "OpenAI 키 준비됨",
   "settings.plugin.ai_chat.agent_provider.setup_required": "설정 필요",
   "settings.plugin.ai_chat.agent_provider.codex": "Codex CLI",
@@ -259,6 +260,27 @@ export const KO_MESSAGES = {
   "settings.plugin.ai_chat.openai.placeholder": "OpenAI API 키 붙여넣기",
   "settings.plugin.ai_chat.openai.save": "키 저장",
   "settings.plugin.ai_chat.openai.clear": "삭제",
+  "settings.plugin.ai_chat.agent_api.provider.label": "에이전트 엔진",
+  "settings.plugin.ai_chat.agent_api.provider.description":
+    "채팅과 에이전트 정리를 실행할 엔진을 고르세요.",
+  "settings.plugin.ai_chat.agent_api.cost_title": "외부 API 사용",
+  "settings.plugin.ai_chat.agent_api.cost_description":
+    "요청은 선택한 제공자에게 직접 전송되며 해당 계정에 과금될 수 있어요.",
+  "settings.plugin.ai_chat.agent_api.base_url.label": "Base URL",
+  "settings.plugin.ai_chat.agent_api.base_url.description":
+    "OpenAI-compatible /v1 endpoint를 사용해요. HTTP는 localhost 전용이에요.",
+  "settings.plugin.ai_chat.agent_api.model.label": "모델",
+  "settings.plugin.ai_chat.agent_api.model.description":
+    "선택한 제공자에게 보낼 model ID예요.",
+  "settings.plugin.ai_chat.agent_api.key_label": "API 키",
+  "settings.plugin.ai_chat.agent_api.configured":
+    "Agent API 키가 macOS Keychain에 저장되어 있어요.",
+  "settings.plugin.ai_chat.agent_api.not_configured":
+    "이 기기에 저장된 Agent API 키가 없어요.",
+  "settings.plugin.ai_chat.agent_api.placeholder": "제공자 API 키 붙여넣기",
+  "settings.plugin.ai_chat.agent_api.placeholder_optional": "로컬 제공자는 선택 사항",
+  "settings.plugin.ai_chat.agent_api.save": "키 저장",
+  "settings.plugin.ai_chat.agent_api.clear": "삭제",
   "settings.plugin.ai_chat.account_banner.title": "Momo 계정이 있나요?",
   "settings.plugin.ai_chat.account_banner.description":
     "로그인 후 “Momo (로그인됨)”을 고르면 바로 채팅돼요. 이 화면은 연결 방식/키 선택과 저장만 담당해요. 로그인, 세션, AI 권한은 계정 탭에서 관리해요.",

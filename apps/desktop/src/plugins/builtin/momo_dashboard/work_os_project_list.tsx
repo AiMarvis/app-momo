@@ -1,3 +1,4 @@
+// @allow SIZE_OK - legacy Project OS list view owns existing panels; this change only renders the persisted Git receipt.
 import { For, Show, createSignal } from "solid-js";
 
 import { FolderIcon, SparklesIcon } from "~/components/icons";
@@ -13,6 +14,7 @@ import {
   updateWorkProjectDates,
   updateWorkProjectStatus,
   workOsState,
+  type ProjectOsGitReceipt,
   type WorkItem,
   type WorkProject,
 } from "./work_os_store";
@@ -203,12 +205,49 @@ function ProjectReceipt(props: { project: WorkProject }) {
     <Show when={props.project.lastProjectOsRunReceipt}>
       {(receipt) => (
         <div class="min-w-0 border-t border-border pt-1">
-          <p class="truncate text-[0.75rem] text-text-secondary">
+          <p class="break-words text-[0.75rem] text-text-secondary">
             {receipt().status === "applied"
               ? "Latest sync found work that moves this project forward"
               : "Latest sync could not safely apply work that moves this project forward"}
           </p>
-          <p class="truncate text-[0.75rem] text-text-muted">{receipt().summary}</p>
+          <p class="break-words text-[0.75rem] text-text-muted">{receipt().summary}</p>
+          <Show when={receipt().git}>
+            {(git) => (
+              <div class="mt-1 min-w-0">
+                <p class="break-words text-[0.75rem] text-text-secondary">
+                  {gitReceiptOwnerLine(git())}
+                </p>
+                <Show when={git().summary}>
+                  <p class="mt-0.5 break-words text-[0.75rem] text-text-muted">{git().summary}</p>
+                </Show>
+                <details class="mt-1 break-words text-[0.6875rem] text-text-muted">
+                  <summary class="cursor-pointer text-text-secondary">Git receipt details</summary>
+                  <dl class="mt-1 grid gap-1 font-mono">
+                    <div>
+                      <dt class="text-text-secondary">Range</dt>
+                      <dd>{git().range || "No Git range recorded."}</dd>
+                    </div>
+                    <div>
+                      <dt class="text-text-secondary">Head</dt>
+                      <dd>{git().headCommit || "No head commit recorded."}</dd>
+                    </div>
+                    <div>
+                      <dt class="text-text-secondary">Previous</dt>
+                      <dd>{git().previousCommit || "No previous commit recorded."}</dd>
+                    </div>
+                  </dl>
+                  <Show when={git().changedPaths.length > 0}>
+                    <ul class="mt-1 list-inside list-disc font-mono">
+                      <For each={git().changedPaths}>{(path) => <li>{path}</li>}</For>
+                    </ul>
+                  </Show>
+                  <Show when={git().error}>
+                    <p class="mt-1 whitespace-pre-wrap">{git().error}</p>
+                  </Show>
+                </details>
+              </div>
+            )}
+          </Show>
           <p class="font-mono text-[0.6875rem] text-text-muted">
             {receipt().createdIssueIds.length} new / {receipt().updatedIssueIds.length} updated
           </p>
@@ -299,6 +338,22 @@ function manualSyncCopy(project: WorkProject): string {
 
 function issueReasonLine(issue: WorkItem): string {
   return [issue.summary, issue.statusReason, issue.priorityReason].filter(Boolean).join(" ");
+}
+
+function gitReceiptOwnerLine(git: ProjectOsGitReceipt): string {
+  switch (git.status) {
+    case "summarized":
+      return "Git changes were included as evidence";
+    case "not_git_repo":
+      return "No Git repo detected; manifest analysis used";
+    case "failed":
+      return "Git summary failed; manifest analysis continued";
+  }
+  return assertNeverGitReceiptStatus(git.status);
+}
+
+function assertNeverGitReceiptStatus(_status: never): never {
+  throw new Error("Unhandled Project OS Git receipt status");
 }
 
 function folderNameFromPath(path: string): string {

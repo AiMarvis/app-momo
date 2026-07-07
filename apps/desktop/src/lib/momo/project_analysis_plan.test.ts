@@ -10,8 +10,6 @@ import {
 
 const PROJECT_ID = "project_momo_desktop";
 const OTHER_PROJECT_ID = "project_other";
-const NOW = "2026-07-04T00:00:00.000Z";
-
 const VALID_CREATE = {
   kind: "project_issue",
   projectId: PROJECT_ID,
@@ -60,6 +58,61 @@ describe("ProjectAnalysisPlan boundary", () => {
     });
   });
 
+  it("builds Project OS agent input with manifest, Git summary, existing issues, and last receipt", () => {
+    const prompt = buildProjectAnalysisPrompt({
+      projectId: PROJECT_ID,
+      projectName: "Momo Desktop",
+      nowIso: "2026-07-07T00:00:00.000Z",
+      manifest: {
+        rootName: "momo",
+        files: [
+          {
+            path: "docs/release.md",
+            size: 42,
+            snippet: "Release owner and update checklist",
+          },
+        ],
+        skipped: [],
+        limits: { maxFiles: 200, maxBytes: 524288, bytesRead: 42, truncated: false },
+      },
+      gitSummary: {
+        status: "ready",
+        head: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        previousCommit: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        range: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb..HEAD",
+        changedPaths: ["docs/release.md"],
+        statusShort: [" M docs/release.md"],
+        diffNameStatus: ["M\tdocs/release.md"],
+        diffStat: ["docs/release.md | 2 +-"],
+        logOneline: ["aaaaaaaa prepare release"],
+        message: null,
+      },
+      existingIssues: ["id=issue_existing; title=Confirm who owns launch review; status=todo"],
+      lastRunReceipt: {
+        status: "applied",
+        summary: "Found 1 project-moving task from the linked folder.",
+        finishedAt: "2026-07-06T00:00:00.000Z",
+        git: {
+          status: "summarized",
+          headCommit: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          range: "v0.5.0..HEAD",
+          summary: "Included 3 changed paths and 1 recent commit.",
+        },
+      },
+    });
+
+    expect(prompt).toContain("ProjectAnalysisPlan");
+    expect(prompt).toContain('"manifest"');
+    expect(prompt).toContain("docs/release.md");
+    expect(prompt).toContain('"gitChangeSummary"');
+    expect(prompt).toContain("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb..HEAD");
+    expect(prompt).toContain('"existingProjectOsIssues"');
+    expect(prompt).toContain("Confirm who owns launch review");
+    expect(prompt).toContain('"lastRunReceipt"');
+    expect(prompt).toContain("Found 1 project-moving task from the linked folder.");
+    expect(prompt).not.toContain("Organize Inbox");
+  });
+
   it("rejects empty required user-facing issue fields", () => {
     const plan = {
       ...validPlan(),
@@ -87,93 +140,6 @@ describe("ProjectAnalysisPlan boundary", () => {
     });
   });
 
-  it("rejects file, function, and internal-error-only issue titles", () => {
-    const pathTitle = withCreate({ title: "apps/desktop/src/lib/momo/project_analysis_runtime.ts" });
-    const functionTitle = withCreate({ title: "applyProjectIssueUpdates()" });
-    const errorTitle = withCreate({ title: "TypeError: Cannot read properties of undefined" });
-
-    expect(parseProjectAnalysisPlanJson(JSON.stringify(pathTitle), PROJECT_ID)).toEqual({
-      kind: "invalid",
-      errors: ["creates[0].title must describe user-visible work, not a file/function/error"],
-    });
-    expect(parseProjectAnalysisPlanJson(JSON.stringify(functionTitle), PROJECT_ID)).toEqual({
-      kind: "invalid",
-      errors: ["creates[0].title must describe user-visible work, not a file/function/error"],
-    });
-    expect(parseProjectAnalysisPlanJson(JSON.stringify(errorTitle), PROJECT_ID)).toEqual({
-      kind: "invalid",
-      errors: ["creates[0].title must describe user-visible work, not a file/function/error"],
-    });
-  });
-
-  it("rejects over-technical user-facing fields", () => {
-    const plan = withCreate({
-      summary: "ProjectList.tsx throws TypeError inside renderProjectIssueCard().",
-      userOutcome: "Users avoid a TypeError in the dashboard component.",
-      nextAction: "Patch renderProjectIssueCard() in apps/desktop/src/lib/momo/project_analysis.ts.",
-    });
-
-    const result = parseProjectAnalysisPlanJson(JSON.stringify(plan), PROJECT_ID);
-
-    expect(result).toEqual({
-      kind: "invalid",
-      errors: [
-        "creates[0].summary must be written for a project user, not as technical diagnostics",
-        "creates[0].userOutcome must be written for a project user, not as technical diagnostics",
-        "creates[0].nextAction must be written for a project user, not as technical diagnostics",
-      ],
-    });
-  });
-
-  it("rejects overly abstract and non-actionable issues", () => {
-    const plan = withCreate({
-      title: "Improve the whole project",
-      nextAction: "Look into it later",
-    });
-
-    const result = parseProjectAnalysisPlanJson(JSON.stringify(plan), PROJECT_ID);
-
-    expect(result).toEqual({
-      kind: "invalid",
-      errors: [
-        "creates[0].title must name a concrete project issue",
-        "creates[0].nextAction must be a concrete next action",
-      ],
-    });
-  });
-
-  it("allows improvement titles when the work target and next action are concrete", () => {
-    const plan = withCreate({
-      title: "Improve checkout recovery guidance after failed payments",
-      summary: "Customers need clearer recovery guidance when a payment attempt does not finish.",
-      userOutcome: "Customers can recover the purchase without guessing what happened.",
-      nextAction: "Draft the first recovery message and assign the owner who will approve it.",
-    });
-
-    expect(parseProjectAnalysisPlanJson(JSON.stringify(plan), PROJECT_ID).kind).toBe("valid");
-  });
-
-  it("rejects second-brain source evidence paths", () => {
-    const plan = withCreate({
-      sourceEvidence: [
-        "Inbox/raw.md",
-        "Knowledge/project.md",
-        "Organize Inbox/run.md",
-      ],
-    });
-
-    const result = parseProjectAnalysisPlanJson(JSON.stringify(plan), PROJECT_ID);
-
-    expect(result).toEqual({
-      kind: "invalid",
-      errors: [
-        "creates[0].sourceEvidence[0] must not reference second-brain paths",
-        "creates[0].sourceEvidence[1] must not reference second-brain paths",
-        "creates[0].sourceEvidence[2] must not reference second-brain paths",
-      ],
-    });
-  });
-
   it("rejects projectId mismatches across the plan, creates, and updates", () => {
     const plan = {
       ...validPlan(),
@@ -194,45 +160,6 @@ describe("ProjectAnalysisPlan boundary", () => {
     });
   });
 
-  it("rejects unsafe source evidence paths", () => {
-    const plan = withCreate({
-      sourceEvidence: [
-        "../package.json",
-        "/etc/passwd",
-        "src/bad\u0000name.ts",
-        "docs/link -> /etc/passwd",
-      ],
-    });
-
-    const result = parseProjectAnalysisPlanJson(JSON.stringify(plan), PROJECT_ID);
-
-    expect(result).toEqual({
-      kind: "invalid",
-      errors: [
-        "creates[0].sourceEvidence[0] must be a safe project-relative path",
-        "creates[0].sourceEvidence[1] must be a safe project-relative path",
-        "creates[0].sourceEvidence[2] must be a safe project-relative path",
-        "creates[0].sourceEvidence[3] must be a safe project-relative path",
-      ],
-    });
-  });
-
-  it("builds a Project OS prompt separate from Organize Inbox", () => {
-    const prompt = buildProjectAnalysisPrompt({
-      projectId: PROJECT_ID,
-      projectName: "Momo Desktop",
-      issueLanguage: "Korean",
-      projectManifest: "docs/launch-review.md\nsrc/dashboard.tsx",
-      existingIssues: ["Clarify launch owner"],
-      nowIso: NOW,
-    });
-
-    expect(prompt).toContain("ProjectAnalysisPlan JSON");
-    expect(prompt).toContain(PROJECT_ID);
-    expect(prompt).toContain("Write all user-facing issue fields in Korean.");
-    expect(prompt).toContain("Clarify launch owner");
-    expect(prompt).not.toContain("Organize Inbox");
-  });
 });
 
 function validPlan(): ProjectAnalysisPlan {

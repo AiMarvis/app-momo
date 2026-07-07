@@ -15,6 +15,7 @@ import {
   sourceEvidenceArray,
   statusFor,
   userText,
+  validateAgentResultText,
   validateTitle,
   type ValidationContext,
 } from "./project_analysis_plan_validation_helpers";
@@ -35,6 +36,7 @@ function validateProjectAnalysisPlan(
   if (kind !== null && kind !== "project_analysis") context.errors.push("plan.kind must be project_analysis");
   if (projectId !== null && projectId !== expectedProjectId)
     context.errors.push("plan.projectId must match requested projectId");
+  if (summary !== null) validateAgentResultText(summary, "plan.summary", context);
 
   const creates = createsInput.flatMap((item, index) => parseIssueCreate(item, index, context));
   const updates = updatesInput.flatMap((item, index) => parseIssueUpdate(item, index, context));
@@ -71,9 +73,15 @@ function parseIssueCreate(
   const technicalDetails = requiredString(value.technicalDetails, `${label}.technicalDetails`, context);
 
   if (kind !== null && kind !== "project_issue") context.errors.push(`${label}.kind must be project_issue`);
-  if (title !== null) validateTitle(title, `${label}.title`, context);
+  if (title !== null) {
+    validateTitle(title, `${label}.title`, context);
+    validateAgentResultText(title, `${label}.title`, context);
+  }
   if (nextAction !== null && isNonActionable(nextAction)) {
     context.errors.push(`${label}.nextAction must be a concrete next action`);
+  }
+  if (technicalDetails !== null) {
+    validateAgentResultText(technicalDetails, `${label}.technicalDetails`, context);
   }
   if (
     kind !== "project_issue" ||
@@ -141,6 +149,9 @@ function parseIssueUpdate(
     context.errors.push(`${label}.kind must be project_issue_update`);
   if (nextAction !== undefined && nextAction !== null && isNonActionable(nextAction)) {
     context.errors.push(`${label}.nextAction must be a concrete next action`);
+  }
+  if (technicalDetails !== undefined && technicalDetails !== null) {
+    validateAgentResultText(technicalDetails, `${label}.technicalDetails`, context);
   }
   if (
     kind !== "project_issue_update" ||

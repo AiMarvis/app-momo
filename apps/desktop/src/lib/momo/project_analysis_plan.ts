@@ -1,3 +1,4 @@
+import type { ProjectGitSummary, ProjectOsManifest } from "../project_os_fs";
 import { validateProjectAnalysisPlan } from "./project_analysis_plan_validation";
 
 type ProjectIssueStatus = "backlog" | "doing" | "done" | "todo";
@@ -47,14 +48,59 @@ type ProjectAnalysisPlanValidationResult =
   | { readonly kind: "invalid"; readonly errors: readonly string[] }
   | { readonly kind: "valid"; readonly plan: ProjectAnalysisPlan };
 
+type ProjectAnalysisLastRunReceipt = {
+  readonly status: "applied" | "failed";
+  readonly summary: string;
+  readonly finishedAt: string;
+  readonly git?: unknown | null;
+};
+
 type ProjectAnalysisPromptInput = {
   readonly projectId: string;
   readonly projectName: string;
-  readonly issueLanguage: string;
-  readonly projectManifest: string;
+  readonly manifest: ProjectOsManifest;
+  readonly gitSummary: ProjectGitSummary;
   readonly existingIssues: readonly string[];
+  readonly lastRunReceipt: ProjectAnalysisLastRunReceipt | null;
   readonly nowIso: string;
 };
+
+function buildProjectAnalysisPrompt(input: ProjectAnalysisPromptInput): string {
+  const payload = {
+    project: {
+      id: input.projectId,
+      name: input.projectName,
+      generatedAt: input.nowIso,
+    },
+    manifest: input.manifest,
+    gitChangeSummary: input.gitSummary,
+    existingProjectOsIssues: input.existingIssues,
+    lastRunReceipt: input.lastRunReceipt,
+    outputContract: {
+      kind: "project_analysis",
+      issueRequiredFields: [
+        "title",
+        "summary",
+        "userOutcome",
+        "nextAction",
+        "status",
+        "statusReason",
+        "priority",
+        "priorityReason",
+        "sourceEvidence",
+        "technicalDetails",
+      ],
+      titleRule: "Use one owner-readable sentence. Keep filenames, functions, and commit hashes out of titles.",
+      scopeRule: "Use only the linked project evidence in this payload and return Project OS issue operations only.",
+    },
+  };
+  return [
+    "You are Project OS analysis. Return only a JSON ProjectAnalysisPlan.",
+    "Group technical evidence by user value so project owners can decide the next action.",
+    "Reject unsafe paths, outside-folder evidence, Git write intent, and developer-only issue titles.",
+    JSON.stringify(payload, null, 2),
+  ].join("\n");
+}
 
 function parseProjectAnalysisPlanJson(
   json: string,
@@ -71,57 +117,12 @@ function parseProjectAnalysisPlanJson(
   }
 }
 
-function buildProjectAnalysisPrompt(input: ProjectAnalysisPromptInput): string {
-  return [
-    "Return only one ProjectAnalysisPlan JSON object. Do not include Markdown fences or commentary.",
-    `Project id: ${input.projectId}`,
-    `Project: ${input.projectName}`,
-    `Generated at: ${input.nowIso}`,
-    `Write all user-facing issue fields in ${input.issueLanguage}.`,
-    "Create or update Project OS issues only for this project.",
-    "Write for project owners, planners, and non-developer operators first.",
-    "Do not use file names, function names, stack traces, or internal error names as titles.",
-    "Every issue must say what to do, why it matters, what the user or project gains, and the next action.",
-    "Keep implementation hints only in technicalDetails.",
-    "Use project-relative sourceEvidence path strings only; do not use second-brain vault paths.",
-    "Required root shape:",
-    JSON.stringify(
-      {
-        kind: "project_analysis",
-        projectId: input.projectId,
-        summary: "Short summary of project-moving work found.",
-        creates: [
-          {
-            kind: "project_issue",
-            projectId: input.projectId,
-            title: "Plain-language task title",
-            summary: "Why this work is needed in 1-2 short sentences.",
-            userOutcome: "What the user or project gains when complete.",
-            nextAction: "Concrete next action someone can take now.",
-            status: "backlog | todo | doing | done",
-            statusReason: "Why this status is appropriate.",
-            priority: "low | medium | high",
-            priorityReason: "Why this priority is appropriate.",
-            sourceEvidence: ["relative/project-file.md"],
-            technicalDetails: "Internal file/function/log hints only.",
-          },
-        ],
-        updates: [],
-      },
-      null,
-      2,
-    ),
-    "Existing issues:",
-    ...input.existingIssues.map((issue) => `- ${issue}`),
-    "Project manifest:",
-    input.projectManifest,
-  ].join("\n");
-}
-
 export { buildProjectAnalysisPrompt, parseProjectAnalysisPlanJson, validateProjectAnalysisPlan };
 export type {
+  ProjectAnalysisLastRunReceipt,
   ProjectAnalysisPlan,
   ProjectAnalysisPlanValidationResult,
+  ProjectAnalysisPromptInput,
   ProjectIssueCreate,
   ProjectIssuePriority,
   ProjectIssueStatus,

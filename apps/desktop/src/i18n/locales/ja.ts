@@ -220,8 +220,9 @@ export const JA_MESSAGES = {
     "右サイドバーのタブまたはコマンドでパネルを開き、下部入力欄に入力します。",
   "settings.plugin.ai_chat.agent_provider.title": "エージェントプロバイダー",
   "settings.plugin.ai_chat.agent_provider.description":
-    "Codex CLI はローカルのエージェント操作を有効にします。OpenAI API キーは macOS Keychain に保存され、Codex が未準備のときに使えます。",
+    "Codex CLI または OpenAI 互換 API でローカルのエージェント操作を実行します。API キーは macOS Keychain に保存されます。",
   "settings.plugin.ai_chat.agent_provider.codex_ready": "Codex 準備完了",
+  "settings.plugin.ai_chat.agent_provider.api_ready": "Agent API キー準備完了",
   "settings.plugin.ai_chat.agent_provider.openai_ready": "OpenAI キー準備完了",
   "settings.plugin.ai_chat.agent_provider.setup_required": "設定が必要",
   "settings.plugin.ai_chat.agent_provider.codex": "Codex CLI",
@@ -263,6 +264,27 @@ export const JA_MESSAGES = {
   "settings.plugin.ai_chat.openai.placeholder": "OpenAI API キーを貼り付け",
   "settings.plugin.ai_chat.openai.save": "キーを保存",
   "settings.plugin.ai_chat.openai.clear": "削除",
+  "settings.plugin.ai_chat.agent_api.provider.label": "エージェントエンジン",
+  "settings.plugin.ai_chat.agent_api.provider.description":
+    "チャットとエージェント計画を実行するエンジンを選びます。",
+  "settings.plugin.ai_chat.agent_api.cost_title": "外部 API の使用",
+  "settings.plugin.ai_chat.agent_api.cost_description":
+    "リクエストは選択したプロバイダーへ直接送信され、そのアカウントに課金される場合があります。",
+  "settings.plugin.ai_chat.agent_api.base_url.label": "Base URL",
+  "settings.plugin.ai_chat.agent_api.base_url.description":
+    "OpenAI 互換の /v1 endpoint を使います。HTTP は localhost のみ許可されます。",
+  "settings.plugin.ai_chat.agent_api.model.label": "モデル",
+  "settings.plugin.ai_chat.agent_api.model.description":
+    "選択したプロバイダーへ送信する model ID です。",
+  "settings.plugin.ai_chat.agent_api.key_label": "API キー",
+  "settings.plugin.ai_chat.agent_api.configured":
+    "Agent API キーは macOS Keychain に保存されています。",
+  "settings.plugin.ai_chat.agent_api.not_configured":
+    "この端末に保存された Agent API キーはありません。",
+  "settings.plugin.ai_chat.agent_api.placeholder": "プロバイダー API キーを貼り付け",
+  "settings.plugin.ai_chat.agent_api.placeholder_optional": "ローカルプロバイダーでは任意",
+  "settings.plugin.ai_chat.agent_api.save": "キーを保存",
+  "settings.plugin.ai_chat.agent_api.clear": "削除",
   "settings.plugin.ai_chat.account_banner.title": "Momo アカウントがありますか？",
   "settings.plugin.ai_chat.account_banner.description":
     "ログインして「Momo (signed in)」を選ぶとすぐ使えます。この画面は接続方式・キー選択・保存のみです。ログイン、セッション、AI 権限はアカウントで管理します。",

@@ -2,8 +2,11 @@ import { invoke } from "@tauri-apps/api/core";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { createStore } from "solid-js/store";
 
+import { agentApiProviderNeedsKey } from "./config";
+import type { AgentApiChatConfig } from "./types";
+
 type CodexReadinessStatus = "ready" | "codex_cli_not_found" | "login_required" | "check_timed_out";
-type AgentProviderStatus = "codex_cli" | "setup_required";
+type AgentProviderStatus = "api_provider" | "codex_cli" | "setup_required";
 
 interface CodexReadiness {
   readonly provider: "codex_cli";
@@ -15,7 +18,7 @@ interface CodexReadiness {
   readonly checkedAtMs: number;
 }
 
-interface OpenAiApiKeyStatus {
+interface AgentApiKeyStatus {
   readonly configured: boolean;
 }
 
@@ -27,7 +30,7 @@ interface AgentProviderState {
   loading: boolean;
   error: string | null;
   codex: CodexReadinessView;
-  openai: OpenAiApiKeyStatus;
+  openai: AgentApiKeyStatus;
   providerStatus: AgentProviderStatus;
   manualWorkAvailable: boolean;
   continuedWithoutAgent: boolean;
@@ -35,7 +38,9 @@ interface AgentProviderState {
 
 interface ExistingAiChatGate {
   readonly apiKeyMissing: boolean;
+  readonly agentApiKeyMissing: boolean;
   readonly remoteLoginRequired: boolean;
+  readonly selectedAgentProvider: "api_provider" | "codex_cli";
 }
 
 const CODEX_SETUP_URL = "https://developers.openai.com/codex/cli";
@@ -92,27 +97,43 @@ function withUserFacingStatus(readiness: CodexReadiness): CodexReadinessView {
 
 function resolveProviderStatus(
   codex: CodexReadinessView,
-  _openai: OpenAiApiKeyStatus,
+  agentApiReady: boolean,
 ): AgentProviderStatus {
   if (codex.ready) return "codex_cli";
+  if (agentApiReady) return "api_provider";
   return "setup_required";
 }
 
-async function refreshAgentProviderStatus(): Promise<void> {
+function agentApiReady(apiConfig: AgentApiChatConfig | undefined, status: AgentApiKeyStatus): boolean {
+  if (!apiConfig || apiConfig.providerId === "codex_cli") return false;
+  if (!agentApiProviderNeedsKey(apiConfig.providerId)) return true;
+  return status.configured;
+}
+
+async function readAgentApiKeyStatus(
+  apiConfig: AgentApiChatConfig | undefined,
+): Promise<AgentApiKeyStatus> {
+  if (!apiConfig || apiConfig.providerId === "codex_cli") return { configured: false };
+  if (!agentApiProviderNeedsKey(apiConfig.providerId)) return { configured: false };
+  return invoke<AgentApiKeyStatus>("agent_get_agent_api_key_status", { apiConfig });
+}
+
+async function refreshAgentProviderStatus(apiConfig?: AgentApiChatConfig): Promise<void> {
   setAgentProviderState("loading", true);
   setAgentProviderState("error", null);
   try {
     const [codexRaw, openai] = await Promise.all([
       invoke<CodexReadiness>("agent_check_codex_readiness"),
-      invoke<OpenAiApiKeyStatus>("agent_get_openai_api_key_status"),
+      readAgentApiKeyStatus(apiConfig),
     ]);
     const codex = withUserFacingStatus(codexRaw);
+    const apiReady = agentApiReady(apiConfig, openai);
     setAgentProviderState({
       loading: false,
       error: null,
       codex,
       openai,
-      providerStatus: resolveProviderStatus(codex, openai),
+      providerStatus: resolveProviderStatus(codex, apiReady),
       manualWorkAvailable: true,
       continuedWithoutAgent: agentProviderState.continuedWithoutAgent,
     });
@@ -122,16 +143,22 @@ async function refreshAgentProviderStatus(): Promise<void> {
   }
 }
 
-async function saveOpenAiApiKey(apiKey: string): Promise<void> {
-  const openai = await invoke<OpenAiApiKeyStatus>("agent_set_openai_api_key", { apiKey });
+async function saveAgentApiKey(apiKey: string, apiConfig: AgentApiChatConfig): Promise<void> {
+  const openai = await invoke<AgentApiKeyStatus>("agent_set_agent_api_key", { apiConfig, apiKey });
   setAgentProviderState("openai", openai);
-  setAgentProviderState("providerStatus", resolveProviderStatus(agentProviderState.codex, openai));
+  setAgentProviderState(
+    "providerStatus",
+    resolveProviderStatus(agentProviderState.codex, agentApiReady(apiConfig, openai)),
+  );
 }
 
-async function clearOpenAiApiKey(): Promise<void> {
-  const openai = await invoke<OpenAiApiKeyStatus>("agent_clear_openai_api_key");
+async function clearAgentApiKey(apiConfig: AgentApiChatConfig): Promise<void> {
+  const openai = await invoke<AgentApiKeyStatus>("agent_clear_agent_api_key", { apiConfig });
   setAgentProviderState("openai", openai);
-  setAgentProviderState("providerStatus", resolveProviderStatus(agentProviderState.codex, openai));
+  setAgentProviderState(
+    "providerStatus",
+    resolveProviderStatus(agentProviderState.codex, agentApiReady(apiConfig, openai)),
+  );
 }
 
 function continueWithoutAgent(): void {
@@ -139,8 +166,10 @@ function continueWithoutAgent(): void {
 }
 
 function shouldRenderExistingAiChatSurface(gate: ExistingAiChatGate): boolean {
-  void gate;
-  return agentProviderState.providerStatus === "codex_cli";
+  if (gate.selectedAgentProvider === "codex_cli") {
+    return agentProviderState.codex.ready;
+  }
+  return !gate.agentApiKeyMissing;
 }
 
 function shouldShowAgentSetupPrompt(state: AgentProviderState = agentProviderState): boolean {
@@ -183,12 +212,12 @@ export {
   agentActionsBecomeSetupCtas,
   agentProviderState,
   buildCodexDiagnostic,
-  clearOpenAiApiKey,
+  clearAgentApiKey,
   continueWithoutAgent,
   copyCodexDiagnostic,
   openCodexSetup,
   refreshAgentProviderStatus,
-  saveOpenAiApiKey,
+  saveAgentApiKey,
   shouldRenderExistingAiChatSurface,
   shouldShowAgentSetupPrompt,
 };
@@ -197,5 +226,5 @@ export type {
   CodexReadiness,
   CodexReadinessStatus,
   ExistingAiChatGate,
-  OpenAiApiKeyStatus,
+  AgentApiKeyStatus,
 };

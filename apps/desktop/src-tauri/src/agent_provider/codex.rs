@@ -12,8 +12,11 @@ use tokio::time::timeout;
 const CODEX_PLAN_TIMEOUT: Duration = Duration::from_secs(120);
 const CODEX_CHAT_TIMEOUT: Duration = Duration::from_secs(120);
 const CODEX_EXEC_BASE_ARGS: &[&str] = &["exec"];
-const CODEX_EXEC_OUTPUT_ARGS: &[&str] =
-    &["--ephemeral", "--skip-git-repo-check", "--output-last-message"];
+const CODEX_EXEC_OUTPUT_ARGS: &[&str] = &[
+    "--ephemeral",
+    "--skip-git-repo-check",
+    "--output-last-message",
+];
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
@@ -103,8 +106,14 @@ pub async fn create_codex_plan(request: AgentPlanRequest) -> AgentProviderOutput
     let output_path = provider_temp_output_path("momo-codex-plan");
     let prompt = build_plan_prompt(&request, "codex_cli", "codex");
     let codex_config = request.codex_config.as_ref().cloned().unwrap_or_default();
-    match run_codex_exec_prompt(&prompt, &output_path, CODEX_PLAN_TIMEOUT, "plan", &codex_config)
-        .await
+    match run_codex_exec_prompt(
+        &prompt,
+        &output_path,
+        CODEX_PLAN_TIMEOUT,
+        "plan",
+        &codex_config,
+    )
+    .await
     {
         Ok(text) => provider_output_from_text(&text),
         Err(reason) => failed(reason),
@@ -120,9 +129,14 @@ pub async fn run_codex_chat(request: CodexChatRequest) -> Result<CodexChatRespon
     let output_path = provider_temp_output_path("momo-codex-chat");
     let prompt = build_chat_prompt(&request, content);
     let codex_config = request.codex_config.as_ref().cloned().unwrap_or_default();
-    let text =
-        run_codex_exec_prompt(&prompt, &output_path, CODEX_CHAT_TIMEOUT, "chat", &codex_config)
-            .await?;
+    let text = run_codex_exec_prompt(
+        &prompt,
+        &output_path,
+        CODEX_CHAT_TIMEOUT,
+        "chat",
+        &codex_config,
+    )
+    .await?;
     let content = text.trim();
     if content.is_empty() {
         return Err("Codex CLI returned no response".to_string());

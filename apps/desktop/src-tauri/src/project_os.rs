@@ -1,3 +1,4 @@
+// @allow SIZE_OK - legacy Project OS manifest scanner owns folder traversal, snippet extraction, and safety helpers; this change only exposes existing path/secret helpers for Git receipt validation.
 use std::fs;
 use std::io::Read;
 use std::path::{Component, Path, PathBuf};
@@ -9,6 +10,17 @@ use tauri_plugin_dialog::DialogExt;
 const MAX_FILES: usize = 200;
 const MAX_BYTES: u64 = 512 * 1024;
 const MAX_SNIPPET_BYTES_U64: u64 = 4096;
+pub(crate) const SECOND_BRAIN_ROOT_NAMES: &[&str] = &[
+    ".AgentRuns",
+    "Calendar",
+    "Inbox",
+    "Issues",
+    "Knowledge",
+    "Organize Inbox",
+    "Planning",
+    "Projects",
+    "Tasks",
+];
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -71,7 +83,7 @@ fn scan_project_folder(path: &str) -> Result<ProjectOsManifest, String> {
     Ok(ProjectScan::new(root).run())
 }
 
-fn canonical_project_root(path: &str) -> Result<PathBuf, String> {
+pub(crate) fn canonical_project_root(path: &str) -> Result<PathBuf, String> {
     if path.trim().is_empty() {
         return Err("Invalid project root: empty path".to_string());
     }
@@ -99,11 +111,14 @@ fn canonical_project_root(path: &str) -> Result<PathBuf, String> {
     if root.parent().is_none() {
         return Err("Invalid project root: filesystem root is not allowed".to_string());
     }
-    if root
-        .file_name()
-        .and_then(|value| value.to_str())
-        .is_some_and(is_second_brain_root_name)
-    {
+    if root.components().any(|component| {
+        let Component::Normal(segment) = component else {
+            return false;
+        };
+        segment
+            .to_str()
+            .is_some_and(is_forbidden_linked_root_component)
+    }) {
         return Err("Invalid project root: second-brain folders cannot be linked".to_string());
     }
     Ok(root)
@@ -342,19 +357,12 @@ fn should_skip_dir(name: &str) -> bool {
     .contains(&lower.as_str())
 }
 
-fn is_second_brain_root_name(name: &str) -> bool {
-    matches!(
-        name,
-        ".AgentRuns"
-            | "Calendar"
-            | "Inbox"
-            | "Issues"
-            | "Knowledge"
-            | "Organize Inbox"
-            | "Planning"
-            | "Projects"
-            | "Tasks"
-    )
+pub(crate) fn is_second_brain_root_name(name: &str) -> bool {
+    SECOND_BRAIN_ROOT_NAMES.contains(&name)
+}
+
+fn is_forbidden_linked_root_component(name: &str) -> bool {
+    is_second_brain_root_name(name)
 }
 
 fn should_skip_file(name: &str, path: &Path) -> bool {
@@ -371,7 +379,7 @@ fn should_skip_file(name: &str, path: &Path) -> bool {
     !safe_extension(&extension.to_ascii_lowercase())
 }
 
-fn looks_secret(lower_name: &str) -> bool {
+pub(crate) fn looks_secret(lower_name: &str) -> bool {
     lower_name == ".env"
         || lower_name.starts_with(".env.")
         || lower_name.contains("secret")
@@ -414,14 +422,34 @@ mod tests {
 
     use super::*;
 
-    fn temp_root(label: &str) -> PathBuf {
-        let stamp = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .expect("system clock should be after epoch")
-            .as_nanos();
-        let root = std::env::temp_dir().join(format!("momo-project-os-{label}-{stamp}"));
-        fs::create_dir_all(&root).expect("temp root should be created");
-        root
+    struct TempProjectRoot {
+        path: PathBuf,
+    }
+
+    impl TempProjectRoot {
+        fn new(label: &str) -> Self {
+            let stamp = SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .expect("system clock should be after epoch")
+                .as_nanos();
+            let path = std::env::temp_dir().join(format!("momo-project-os-{label}-{stamp}"));
+            fs::create_dir_all(&path).expect("temp root should be created");
+            Self { path }
+        }
+
+        fn path(&self) -> &Path {
+            &self.path
+        }
+
+        fn join(&self, path: &str) -> PathBuf {
+            self.path.join(path)
+        }
+    }
+
+    impl Drop for TempProjectRoot {
+        fn drop(&mut self) {
+            let _ = fs::remove_dir_all(&self.path);
+        }
     }
 
     fn scan(root: &Path) -> ProjectOsManifest {
@@ -456,8 +484,8 @@ mod tests {
 
     #[test]
     fn scan_project_folder_rejects_second_brain_roots() {
-        for name in ["Inbox", "Knowledge", ".AgentRuns", "Organize Inbox"] {
-            let parent = temp_root("second-brain-root");
+        for name in SECOND_BRAIN_ROOT_NAMES {
+            let parent = TempProjectRoot::new("second-brain-root");
             let root = parent.join(name);
             fs::create_dir_all(&root).expect("second-brain root should be created");
             fs::write(root.join("private.md"), "do not scan second brain")
@@ -467,8 +495,22 @@ mod tests {
                 scan_project_folder(root.to_str().expect("path should be UTF-8")).is_err(),
                 "second-brain root should not be linkable: {root:?}"
             );
+        }
+    }
 
-            let _ = fs::remove_dir_all(parent);
+    #[test]
+    fn scan_project_folder_rejects_roots_nested_under_second_brain_roots() {
+        for name in SECOND_BRAIN_ROOT_NAMES {
+            let parent = TempProjectRoot::new("second-brain-nested-root");
+            let root = parent.join(name).join("linked-project");
+            fs::create_dir_all(&root).expect("nested second-brain root should be created");
+            fs::write(root.join("private.md"), "do not scan second brain")
+                .expect("second-brain file should be written");
+
+            assert!(
+                scan_project_folder(root.to_str().expect("path should be UTF-8")).is_err(),
+                "nested second-brain root should not be linkable: {root:?}"
+            );
         }
     }
 
@@ -477,8 +519,8 @@ mod tests {
     fn scan_project_folder_rejects_root_symlink_to_second_brain_root() {
         use std::os::unix::fs::symlink;
 
-        let parent = temp_root("root-symlink-parent");
-        let target_parent = temp_root("root-symlink-target");
+        let parent = TempProjectRoot::new("root-symlink-parent");
+        let target_parent = TempProjectRoot::new("root-symlink-target");
         let knowledge = target_parent.join("Knowledge");
         fs::create_dir_all(&knowledge).expect("Knowledge target should be created");
         fs::write(knowledge.join("private.md"), "do not scan through symlink")
@@ -490,9 +532,6 @@ mod tests {
             scan_project_folder(link.to_str().expect("path should be UTF-8")).is_err(),
             "root symlink to second-brain folder should not be linkable"
         );
-
-        let _ = fs::remove_dir_all(parent);
-        let _ = fs::remove_dir_all(target_parent);
     }
 
     #[cfg(unix)]
@@ -500,12 +539,13 @@ mod tests {
     fn scan_project_folder_marks_symlink_escape_when_link_points_outside_root() {
         use std::os::unix::fs::symlink;
 
-        let root = temp_root("symlink");
-        let outside = temp_root("outside").join("secret.md");
+        let root = TempProjectRoot::new("symlink");
+        let outside_root = TempProjectRoot::new("outside");
+        let outside = outside_root.join("secret.md");
         fs::write(&outside, "do not read").expect("outside file should be written");
         symlink(&outside, root.join("leak.md")).expect("symlink should be created");
 
-        let manifest = scan(&root);
+        let manifest = scan(root.path());
 
         assert!(
             manifest
@@ -514,16 +554,11 @@ mod tests {
                 .any(|item| item.path == "leak.md" && item.reason.contains("symlink")),
             "symlink escape should be marked, got {manifest:?}"
         );
-
-        let _ = fs::remove_dir_all(root);
-        if let Some(parent) = outside.parent() {
-            let _ = fs::remove_dir_all(parent);
-        }
     }
 
     #[test]
     fn scan_project_folder_returns_manifest_with_relative_paths_only() {
-        let root = temp_root("manifest");
+        let root = TempProjectRoot::new("manifest");
         fs::create_dir_all(root.join("src")).expect("src dir should be created");
         fs::write(
             root.join("src").join("main.ts"),
@@ -531,8 +566,8 @@ mod tests {
         )
         .expect("source file should be written");
 
-        let manifest = scan(&root);
-        let root_text = root.to_string_lossy();
+        let manifest = scan(root.path());
+        let root_text = root.path().to_string_lossy();
 
         assert!(
             manifest
@@ -549,7 +584,5 @@ mod tests {
             }),
             "manifest paths must stay relative, got {manifest:?}"
         );
-
-        let _ = fs::remove_dir_all(root);
     }
 }

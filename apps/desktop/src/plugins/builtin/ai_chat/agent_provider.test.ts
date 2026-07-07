@@ -17,6 +17,15 @@ async function loadAgentProviderModule() {
   return import("./agent_provider");
 }
 
+function nvidiaApiConfig() {
+  return {
+    providerId: "nvidia" as const,
+    providerName: "NVIDIA NIM",
+    baseUrl: "https://integrate.api.nvidia.com/v1",
+    model: "nvidia/nemotron-3-ultra-550b-a55b",
+  };
+}
+
 describe("ai_chat agent_provider", () => {
   beforeEach(() => {
     mockInvoke.mockReset();
@@ -50,7 +59,6 @@ describe("ai_chat agent_provider", () => {
           checkedAtMs: 1,
         };
       }
-      if (command === "agent_get_openai_api_key_status") return { configured: false };
       throw new Error(`unexpected invoke: ${command}`);
     });
 
@@ -71,18 +79,22 @@ describe("ai_chat agent_provider", () => {
     expect(
       agent.shouldRenderExistingAiChatSurface({
         apiKeyMissing: false,
+        agentApiKeyMissing: true,
         remoteLoginRequired: false,
+        selectedAgentProvider: "codex_cli",
       }),
     ).toBe(false);
     expect(
       agent.shouldRenderExistingAiChatSurface({
         apiKeyMissing: true,
+        agentApiKeyMissing: false,
         remoteLoginRequired: false,
+        selectedAgentProvider: "api_provider",
       }),
-    ).toBe(false);
+    ).toBe(true);
   });
 
-  it("does not promote OpenAI BYOK to the active chat provider", async () => {
+  it("promotes a configured Agent API key when Codex is unavailable", async () => {
     mockInvoke.mockImplementation(async (command: string) => {
       if (command === "agent_check_codex_readiness") {
         return {
@@ -95,16 +107,16 @@ describe("ai_chat agent_provider", () => {
           checkedAtMs: 1,
         };
       }
-      if (command === "agent_get_openai_api_key_status") return { configured: true };
+      if (command === "agent_get_agent_api_key_status") return { configured: true };
       throw new Error(`unexpected invoke: ${command}`);
     });
 
     const agent = await loadAgentProviderModule();
 
-    await agent.refreshAgentProviderStatus();
+    await agent.refreshAgentProviderStatus(nvidiaApiConfig());
 
     expect(agent.agentProviderState.openai.configured).toBe(true);
-    expect(agent.agentProviderState.providerStatus).toBe("setup_required");
+    expect(agent.agentProviderState.providerStatus).toBe("api_provider");
   });
 
   it("keeps AI chat available with Codex ready even when legacy providers are missing", async () => {
@@ -120,7 +132,6 @@ describe("ai_chat agent_provider", () => {
           checkedAtMs: 5,
         };
       }
-      if (command === "agent_get_openai_api_key_status") return { configured: false };
       throw new Error(`unexpected invoke: ${command}`);
     });
 
@@ -132,7 +143,9 @@ describe("ai_chat agent_provider", () => {
     expect(
       agent.shouldRenderExistingAiChatSurface({
         apiKeyMissing: true,
+        agentApiKeyMissing: true,
         remoteLoginRequired: false,
+        selectedAgentProvider: "codex_cli",
       }),
     ).toBe(true);
   });
@@ -163,7 +176,6 @@ describe("ai_chat agent_provider", () => {
           checkedAtMs: 2,
         };
       }
-      if (command === "agent_get_openai_api_key_status") return { configured: false };
       throw new Error(`unexpected invoke: ${command}`);
     });
 
@@ -187,7 +199,6 @@ describe("ai_chat agent_provider", () => {
           checkedAtMs: 3,
         };
       }
-      if (command === "agent_get_openai_api_key_status") return { configured: false };
       throw new Error(`unexpected invoke: ${command}`);
     });
 
@@ -225,9 +236,10 @@ describe("ai_chat agent_provider", () => {
 
     const agent = await loadAgentProviderModule();
 
-    await agent.saveOpenAiApiKey("task-5-openai-key-fixture");
+    await agent.saveAgentApiKey("task-5-openai-key-fixture", nvidiaApiConfig());
 
-    expect(mockInvoke).toHaveBeenCalledWith("agent_set_openai_api_key", {
+    expect(mockInvoke).toHaveBeenCalledWith("agent_set_agent_api_key", {
+      apiConfig: nvidiaApiConfig(),
       apiKey: "task-5-openai-key-fixture",
     });
     expect(mockInvoke).not.toHaveBeenCalledWith(
@@ -235,5 +247,41 @@ describe("ai_chat agent_provider", () => {
       expect.objectContaining({ settings: expect.stringContaining("task-5-openai-key-fixture") }),
     );
     expect(localStorage.getItem("openaiApiKey")).toBe("task-5-local-storage-fixture");
+  });
+
+  it("does not treat a saved key for one provider as ready for another provider", async () => {
+    mockInvoke.mockImplementation(async (command: string, args?: unknown) => {
+      if (command === "agent_check_codex_readiness") {
+        return {
+          provider: "codex_cli",
+          status: "codex_cli_not_found",
+          ready: false,
+          checkName: "codex login status",
+          exitCode: null,
+          timedOut: false,
+          checkedAtMs: 1,
+        };
+      }
+      if (command === "agent_get_agent_api_key_status") {
+        const providerId = (args as { apiConfig?: { providerId?: string } }).apiConfig?.providerId;
+        return { configured: providerId === "nvidia" };
+      }
+      throw new Error(`unexpected invoke: ${command}`);
+    });
+
+    const agent = await loadAgentProviderModule();
+
+    await agent.refreshAgentProviderStatus(nvidiaApiConfig());
+    expect(agent.agentProviderState.providerStatus).toBe("api_provider");
+
+    await agent.refreshAgentProviderStatus({
+      providerId: "xai",
+      providerName: "xAI Grok",
+      baseUrl: "https://api.x.ai/v1",
+      model: "grok-4",
+    });
+
+    expect(agent.agentProviderState.openai.configured).toBe(false);
+    expect(agent.agentProviderState.providerStatus).toBe("setup_required");
   });
 });

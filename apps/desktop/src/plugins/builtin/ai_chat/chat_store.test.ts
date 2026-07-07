@@ -56,9 +56,14 @@ function codexReadyResponse() {
   };
 }
 
-async function refreshCodexReadyProvider(): Promise<void> {
+async function refreshCodexReadyProvider(apiConfig?: {
+  readonly providerId: "codex_cli" | "custom" | "deepseek" | "lm_studio" | "nvidia" | "openai" | "xai";
+  readonly providerName: string;
+  readonly baseUrl: string;
+  readonly model: string;
+}): Promise<void> {
   const agent = await import("./agent_provider");
-  await agent.refreshAgentProviderStatus();
+  await agent.refreshAgentProviderStatus(apiConfig);
 }
 
 describe("ai_chat chat_store config", () => {
@@ -117,6 +122,10 @@ describe("ai_chat chat_store config", () => {
         codexSandbox: "workspace-write",
         codexApprovalPolicy: "default",
         codexWebSearch: false,
+        agentApiProvider: "codex_cli",
+        agentApiBaseUrl: "",
+        agentApiModel: "",
+        agentApiName: "Codex CLI",
         roundLimit: 16,
         proxyToolTimeoutMs: 30_000,
       },
@@ -133,6 +142,10 @@ describe("ai_chat chat_store config", () => {
         codexSandbox: "workspace-write",
         codexApprovalPolicy: "default",
         codexWebSearch: false,
+        agentApiProvider: "codex_cli",
+        agentApiBaseUrl: "",
+        agentApiModel: "",
+        agentApiName: "Codex CLI",
         roundLimit: 16,
         proxyToolTimeoutMs: 30_000,
       },
@@ -182,6 +195,10 @@ describe("ai_chat chat_store config", () => {
         codexSandbox: "danger-full-access",
         codexApprovalPolicy: "default",
         codexWebSearch: false,
+        agentApiProvider: "codex_cli",
+        agentApiBaseUrl: "",
+        agentApiModel: "",
+        agentApiName: "Codex CLI",
         roundLimit: 12,
         proxyToolTimeoutMs: 15_000,
       },
@@ -198,6 +215,10 @@ describe("ai_chat chat_store config", () => {
         codexSandbox: "danger-full-access",
         codexApprovalPolicy: "default",
         codexWebSearch: false,
+        agentApiProvider: "codex_cli",
+        agentApiBaseUrl: "",
+        agentApiModel: "",
+        agentApiName: "Codex CLI",
         roundLimit: 12,
         proxyToolTimeoutMs: 15_000,
       },
@@ -307,7 +328,7 @@ describe("ai_chat chat_store session modes", () => {
       switch (command) {
         case "agent_check_codex_readiness":
           return codexReadyResponse();
-        case "agent_get_openai_api_key_status":
+        case "agent_get_agent_api_key_status":
           return { configured: false };
         case "plugin:kuku-ai|ai_new_session":
           return { sessionId: "session-1" };
@@ -370,7 +391,7 @@ describe("ai_chat chat_store session modes", () => {
             timedOut: false,
             checkedAtMs: 1,
           };
-        case "agent_get_openai_api_key_status":
+        case "agent_get_agent_api_key_status":
           return { configured: false };
         case "plugin:kuku-ai|ai_new_session":
           return { sessionId: "session-1" };
@@ -415,6 +436,141 @@ describe("ai_chat chat_store session modes", () => {
     expect(chat.chatState.sessions["session-1"]?.status).toBe("idle");
   });
 
+  it("sends through the selected OpenAI-compatible agent provider", async () => {
+    mockInvoke.mockImplementation(async (command: string) => {
+      switch (command) {
+        case "plugin_save_settings_with_secrets":
+        case "plugin:kuku-ai|ai_set_config":
+          return undefined;
+        case "agent_check_codex_readiness":
+          return {
+            provider: "codex_cli",
+            status: "codex_cli_not_found",
+            ready: false,
+            checkName: "codex login status",
+            exitCode: 127,
+            timedOut: false,
+            checkedAtMs: 1,
+          };
+        case "agent_get_agent_api_key_status":
+          return { configured: true };
+        case "plugin:kuku-ai|ai_new_session":
+          return { sessionId: "session-1" };
+        case "agent_run_openai_compatible_chat":
+          return { content: "NVIDIA configured." };
+        default:
+          throw new Error(`unexpected invoke: ${command}`);
+      }
+    });
+
+    const chat = await loadChatStoreModule();
+    const agent = await import("./agent_provider");
+    await chat.saveConfig({
+      provider: "remote",
+      apiKey: "",
+      serverUrl: "http://localhost:8080",
+      defaultMode: "ask",
+      codexModel: "",
+      codexSandbox: "read-only",
+      agentApiProvider: "nvidia",
+      agentApiBaseUrl: "https://integrate.api.nvidia.com/v1",
+      agentApiModel: "nvidia/nemotron-3-ultra-550b-a55b",
+      agentApiName: "NVIDIA NIM",
+    });
+    await agent.refreshAgentProviderStatus({
+      providerId: "nvidia",
+      providerName: "NVIDIA NIM",
+      baseUrl: "https://integrate.api.nvidia.com/v1",
+      model: "nvidia/nemotron-3-ultra-550b-a55b",
+    });
+
+    await chat.createSession("ask");
+    await chat.sendMessage("use nvidia");
+
+    expect(mockInvoke).toHaveBeenCalledWith("agent_run_openai_compatible_chat", {
+      request: {
+        content: "use nvidia",
+        mode: "ask",
+        apiConfig: {
+          providerId: "nvidia",
+          providerName: "NVIDIA NIM",
+          baseUrl: "https://integrate.api.nvidia.com/v1",
+          model: "nvidia/nemotron-3-ultra-550b-a55b",
+        },
+        editorContext: {
+          activeFile: null,
+          selectedText: null,
+          openTabs: [],
+          cursorLine: null,
+          embeddedFiles: [],
+        },
+      },
+    });
+    expect(mockInvoke).not.toHaveBeenCalledWith("agent_run_codex_chat", expect.anything());
+    expect(chat.chatState.sessions["session-1"]?.messages).toMatchObject([
+      { kind: "text", role: "user", content: "use nvidia" },
+      { kind: "text", role: "assistant", content: "NVIDIA configured." },
+    ]);
+  });
+
+  it("does not send with a key saved for a different OpenAI-compatible provider", async () => {
+    const xaiConfig = {
+      providerId: "xai" as const,
+      providerName: "xAI Grok",
+      baseUrl: "https://api.x.ai/v1",
+      model: "grok-4",
+    };
+    mockInvoke.mockImplementation(async (command: string, args?: unknown) => {
+      switch (command) {
+        case "plugin_save_settings_with_secrets":
+        case "plugin:kuku-ai|ai_set_config":
+          return undefined;
+        case "agent_check_codex_readiness":
+          return {
+            provider: "codex_cli",
+            status: "codex_cli_not_found",
+            ready: false,
+            checkName: "codex login status",
+            exitCode: 127,
+            timedOut: false,
+            checkedAtMs: 1,
+          };
+        case "agent_get_agent_api_key_status":
+          expect(args).toEqual({ apiConfig: xaiConfig });
+          return { configured: false };
+        case "plugin:kuku-ai|ai_new_session":
+          return { sessionId: "session-1" };
+        default:
+          throw new Error(`unexpected invoke: ${command}`);
+      }
+    });
+
+    const chat = await loadChatStoreModule();
+    await chat.saveConfig({
+      provider: "remote",
+      apiKey: "",
+      serverUrl: "http://localhost:8080",
+      defaultMode: "ask",
+      codexModel: "",
+      codexSandbox: "read-only",
+      agentApiProvider: "xai",
+      agentApiBaseUrl: "https://api.x.ai/v1",
+      agentApiModel: "grok-4",
+      agentApiName: "xAI Grok",
+    });
+    await refreshCodexReadyProvider(xaiConfig);
+
+    await chat.createSession("ask");
+    await chat.sendMessage("use xai");
+
+    expect(chat.chatState.sessions["session-1"]?.status).toBe("error");
+    expect(chat.chatState.sessions["session-1"]?.error).toBe("Agent API key is not configured");
+    expect(mockInvoke).not.toHaveBeenCalledWith(
+      "agent_run_openai_compatible_chat",
+      expect.anything(),
+    );
+  });
+
   it("sends saved Codex CLI settings with chat requests", async () => {
     mockInvoke.mockImplementation(async (command: string) => {
       switch (command) {
@@ -437,7 +593,7 @@ describe("ai_chat chat_store session modes", () => {
           return undefined;
         case "agent_check_codex_readiness":
           return codexReadyResponse();
-        case "agent_get_openai_api_key_status":
+        case "agent_get_agent_api_key_status":
           return { configured: false };
         case "plugin:kuku-ai|ai_new_session":
           return { sessionId: "session-1" };
@@ -505,7 +661,7 @@ describe("ai_chat chat_store session modes", () => {
       switch (command) {
         case "agent_check_codex_readiness":
           return codexReadyResponse();
-        case "agent_get_openai_api_key_status":
+        case "agent_get_agent_api_key_status":
           return { configured: false };
         case "plugin:kuku-ai|ai_new_session":
           return { sessionId: "session-1" };
@@ -548,7 +704,7 @@ describe("ai_chat chat_store session modes", () => {
       switch (command) {
         case "agent_check_codex_readiness":
           return codexReadyResponse();
-        case "agent_get_openai_api_key_status":
+        case "agent_get_agent_api_key_status":
           return { configured: false };
         case "plugin:kuku-ai|ai_new_session":
           return { sessionId: "session-1" };
@@ -627,7 +783,7 @@ describe("ai_chat chat_store session modes", () => {
       switch (command) {
         case "agent_check_codex_readiness":
           return codexReadyResponse();
-        case "agent_get_openai_api_key_status":
+        case "agent_get_agent_api_key_status":
           return { configured: false };
         case "plugin:kuku-ai|ai_new_session":
           return { sessionId: "session-1" };
@@ -693,7 +849,7 @@ describe("ai_chat chat_store session modes", () => {
       switch (command) {
         case "agent_check_codex_readiness":
           return codexReadyResponse();
-        case "agent_get_openai_api_key_status":
+        case "agent_get_agent_api_key_status":
           return { configured: false };
         case "plugin:kuku-ai|ai_new_session":
           return { sessionId: "session-1" };

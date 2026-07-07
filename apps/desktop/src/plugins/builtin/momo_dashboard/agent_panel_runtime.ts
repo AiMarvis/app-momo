@@ -18,6 +18,8 @@ import { agentRunCopyForResult, type AgentRunState } from "./agent_panel_cards";
 import {
   AI_CHAT_SECURE_KEYS,
   AI_CHAT_SETTINGS_PLUGIN_ID,
+  agentApiProviderNeedsKey,
+  createAgentApiConfigFromAiConfig,
   createCodexConfigFromAiConfig,
   createDefaultAiConfig,
   normalizeAiConfig,
@@ -55,6 +57,8 @@ const appOrganizeVault: OrganizeInboxVault = {
 
 const appCodexAdapter: CodexPlanAdapter = {
   ready: async () => {
+    const config = await loadAiProviderSettings();
+    if (config.agentApiProvider !== "codex_cli") return false;
     const readiness = await invoke<CodexReadiness>("agent_check_codex_readiness");
     return readiness.ready;
   },
@@ -70,11 +74,25 @@ const appCodexAdapter: CodexPlanAdapter = {
 };
 
 const appOpenAiAdapter: OpenAiPlanAdapter = {
-  byokReady: async () => false,
-  createPlan: async () => ({
-    kind: "failed",
-    reason: "OpenAI fallback is disabled",
-  }),
+  byokReady: async () => {
+    const config = await loadAiProviderSettings();
+    if (config.agentApiProvider === "codex_cli") return false;
+    if (!agentApiProviderNeedsKey(config.agentApiProvider ?? "codex_cli")) return true;
+    const apiConfig = createAgentApiConfigFromAiConfig(config);
+    const status = await invoke<{ configured: boolean }>("agent_get_agent_api_key_status", {
+      apiConfig,
+    });
+    return status.configured;
+  },
+  createPlan: async (request) => {
+    const config = await loadAiProviderSettings();
+    return invoke<ProviderAdapterOutput>("agent_create_openai_compatible_plan", {
+      request: {
+        ...serializableProviderRequest(request),
+        apiConfig: createAgentApiConfigFromAiConfig(config),
+      },
+    });
+  },
 };
 
 async function defaultOrganizeInbox(sourceNote: string): Promise<OrganizeInboxResult> {
@@ -88,13 +106,18 @@ async function defaultOrganizeInbox(sourceNote: string): Promise<OrganizeInboxRe
 }
 
 async function loadCodexProviderSettings(): Promise<CodexChatConfig> {
+  const config = await loadAiProviderSettings();
+  return createCodexConfigFromAiConfig(config);
+}
+
+async function loadAiProviderSettings(): Promise<AiConfig> {
   const config = await loadPluginSettings<AiConfig>({
     pluginId: AI_CHAT_SETTINGS_PLUGIN_ID,
     defaults: createDefaultAiConfig(),
     secureKeys: [...AI_CHAT_SECURE_KEYS],
     normalize: (raw) => normalizeAiConfig(raw),
   });
-  return createCodexConfigFromAiConfig(config);
+  return config;
 }
 
 async function runOrganizeForPanel(input: RunOrganizeForPanelInput): Promise<void> {

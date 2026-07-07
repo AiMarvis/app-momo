@@ -101,13 +101,13 @@ describe("agent provider adapters", () => {
     });
   });
 
-  it("does not use direct OpenAI when Codex is not ready", async () => {
+  it("uses direct API provider when Codex is not ready", async () => {
     const askApproval = vi.fn(async () => false);
     const codexPlan = vi.fn(async () => failedCodexPlan());
     const openAiPlan = vi.fn(async () =>
       validPlan({
         kind: "openai_api",
-        name: "openai",
+        name: "NVIDIA NIM",
       }),
     );
 
@@ -125,13 +125,43 @@ describe("agent provider adapters", () => {
       nowIso: () => FALLBACK_APPROVED_AT,
     });
 
-    expect(result).toEqual({
-      kind: "invalid",
-      errors: ["Codex CLI setup required"],
+    expect(result).toMatchObject({
+      kind: "valid",
+      plan: {
+        provider: {
+          kind: "openai_api",
+          name: "NVIDIA NIM",
+        },
+      },
     });
     expect(codexPlan).not.toHaveBeenCalled();
-    expect(openAiPlan).not.toHaveBeenCalled();
+    expect(openAiPlan).toHaveBeenCalledOnce();
     expect(askApproval).not.toHaveBeenCalled();
+  });
+
+  it("requires Codex or API setup before planning", async () => {
+    const result = await runAgentProviderAdapters({
+      sourceNote: SOURCE_NOTE,
+      codex: {
+        ready: async () => false,
+        createPlan: vi.fn(async () => failedCodexPlan()),
+      },
+      openai: {
+        byokReady: async () => false,
+        createPlan: vi.fn(async () =>
+          validPlan({
+            kind: "openai_api",
+            name: "openai",
+          }),
+        ),
+      },
+      askOpenAiFallbackApproval: vi.fn(async () => false),
+    });
+
+    expect(result).toEqual({
+      kind: "invalid",
+      errors: ["Codex CLI or Agent API key setup required"],
+    });
   });
 
   it("does not use OpenAI after approval when Codex fails", async () => {

@@ -2,16 +2,24 @@ import { For, Show, createEffect, createMemo, createSignal, on, type JSX } from 
 
 import {
   agentProviderState,
-  clearOpenAiApiKey,
+  clearAgentApiKey,
   copyCodexDiagnostic,
   openCodexSetup,
   refreshAgentProviderStatus,
-  saveOpenAiApiKey,
+  saveAgentApiKey,
 } from "../agent_provider";
 import { chatState, loadConfig, loadTools, saveConfig } from "../chat_store";
-import { normalizeChatMode, normalizeCodexSandbox } from "../config";
+import {
+  AGENT_API_PROVIDER_PRESETS,
+  agentApiProviderNeedsKey,
+  agentApiProviderPreset,
+  createAgentApiConfigFromAiConfig,
+  normalizeAgentApiProvider,
+  normalizeChatMode,
+  normalizeCodexSandbox,
+} from "../config";
 import { formatToolIdentity, getToolInfo } from "../tool_identity";
-import type { ChatMode, CodexSandboxMode } from "../types";
+import type { AgentApiProviderId, ChatMode, CodexSandboxMode } from "../types";
 import { ChevronIcon, EyeIcon, EyeOffIcon } from "~/components/icons";
 import ScrollArea from "~/components/scroll_area";
 import {
@@ -54,15 +62,31 @@ function AiSettings(): JSX.Element {
   const [defaultMode, setDefaultMode] = createSignal<ChatMode>("ask");
   const [codexModel, setCodexModel] = createSignal("");
   const [codexSandbox, setCodexSandbox] = createSignal<CodexSandboxMode>("read-only");
-  const [openAiApiKey, setOpenAiApiKey] = createSignal("");
+  const [agentApiProvider, setAgentApiProvider] =
+    createSignal<AgentApiProviderId>("codex_cli");
+  const [agentApiBaseUrl, setAgentApiBaseUrl] = createSignal("");
+  const [agentApiModel, setAgentApiModel] = createSignal("");
+  const [agentApiName, setAgentApiName] = createSignal("");
+  const [agentApiKey, setAgentApiKey] = createSignal("");
   const [showApiKey, setShowApiKey] = createSignal(false);
   const settingsRefreshToken = useSettingsRefreshToken();
+
+  const currentAgentApiConfig = createMemo(() =>
+    createAgentApiConfigFromAiConfig({
+      agentApiProvider: agentApiProvider(),
+      agentApiBaseUrl: agentApiBaseUrl(),
+      agentApiModel: agentApiModel(),
+      agentApiName: agentApiName(),
+    }),
+  );
 
   createEffect(
     on(
       settingsRefreshToken,
       () => {
-        void Promise.all([loadConfig(), loadTools(), refreshAgentProviderStatus()]);
+        void Promise.all([loadConfig(), loadTools()]).then(() =>
+          refreshAgentProviderStatus(createAgentApiConfigFromAiConfig(chatState.config)),
+        );
       },
       { defer: false },
     ),
@@ -77,6 +101,10 @@ function AiSettings(): JSX.Element {
       setDefaultMode(chatState.config.defaultMode);
       setCodexModel(chatState.config.codexModel);
       setCodexSandbox(chatState.config.codexSandbox);
+      setAgentApiProvider(chatState.config.agentApiProvider);
+      setAgentApiBaseUrl(chatState.config.agentApiBaseUrl);
+      setAgentApiModel(chatState.config.agentApiModel);
+      setAgentApiName(chatState.config.agentApiName);
     }
   });
 
@@ -88,7 +116,11 @@ function AiSettings(): JSX.Element {
       serverUrl() !== chatState.config.serverUrl ||
       defaultMode() !== chatState.config.defaultMode ||
       codexModel().trim() !== chatState.config.codexModel ||
-      codexSandbox() !== chatState.config.codexSandbox
+      codexSandbox() !== chatState.config.codexSandbox ||
+      agentApiProvider() !== chatState.config.agentApiProvider ||
+      agentApiBaseUrl().trim() !== chatState.config.agentApiBaseUrl ||
+      agentApiModel().trim() !== chatState.config.agentApiModel ||
+      agentApiName().trim() !== chatState.config.agentApiName
     );
   });
 
@@ -98,12 +130,44 @@ function AiSettings(): JSX.Element {
     return t("settings.plugin.ai_chat.action.save");
   });
 
-  const providerStatusLabel = createMemo(() => {
-    if (agentProviderState.providerStatus === "codex_cli") {
-      return t("settings.plugin.ai_chat.agent_provider.codex_ready");
-    }
-    return t("settings.plugin.ai_chat.agent_provider.setup_required");
+  const selectedAgentApiReady = createMemo(() => {
+    if (agentApiProvider() === "codex_cli") return false;
+    if (!agentApiProviderNeedsKey(agentApiProvider())) return true;
+    return agentProviderState.openai.configured;
   });
+
+  const selectedAgentProviderReady = createMemo(() =>
+    agentApiProvider() === "codex_cli" ? agentProviderState.codex.ready : selectedAgentApiReady(),
+  );
+
+  const providerStatusLabel = createMemo(() => {
+    if (agentApiProvider() === "codex_cli") {
+      return agentProviderState.codex.ready
+        ? t("settings.plugin.ai_chat.agent_provider.codex_ready")
+        : t("settings.plugin.ai_chat.agent_provider.setup_required");
+    }
+    return selectedAgentApiReady()
+      ? t("settings.plugin.ai_chat.agent_provider.api_ready")
+      : t("settings.plugin.ai_chat.agent_provider.setup_required");
+  });
+
+  function selectAgentApiProvider(value: string): void {
+    const nextProvider = normalizeAgentApiProvider(value);
+    const preset = agentApiProviderPreset(nextProvider);
+    setAgentApiProvider(nextProvider);
+    setAgentApiBaseUrl(preset.baseUrl);
+    setAgentApiModel(preset.model);
+    setAgentApiName(preset.name);
+    setAgentApiKey("");
+    void refreshAgentProviderStatus(
+      createAgentApiConfigFromAiConfig({
+        agentApiProvider: nextProvider,
+        agentApiBaseUrl: preset.baseUrl,
+        agentApiModel: preset.model,
+        agentApiName: preset.name,
+      }),
+    );
+  }
 
   return (
     <SettingsPanel
@@ -122,6 +186,10 @@ function AiSettings(): JSX.Element {
               defaultMode: defaultMode(),
               codexModel: codexModel(),
               codexSandbox: codexSandbox(),
+              agentApiProvider: agentApiProvider(),
+              agentApiBaseUrl: agentApiBaseUrl(),
+              agentApiModel: agentApiModel(),
+              agentApiName: agentApiName(),
             })
           }
         >
@@ -179,9 +247,7 @@ function AiSettings(): JSX.Element {
         tone="subtle"
         anchor="agent-provider"
         action={
-          <SettingsStatusBadge
-            tone={agentProviderState.providerStatus === "setup_required" ? "error" : "success"}
-          >
+          <SettingsStatusBadge tone={selectedAgentProviderReady() ? "success" : "error"}>
             {providerStatusLabel()}
           </SettingsStatusBadge>
         }
@@ -266,47 +332,102 @@ function AiSettings(): JSX.Element {
               }
             />
           </div>
-          <SettingsBanner
-            tone="warning"
-            title={t("settings.plugin.ai_chat.openai.cost_title")}
-            description={t("settings.plugin.ai_chat.openai.cost_description")}
-          />
           <SettingsFieldRow
             stacked
-            label={t("settings.plugin.ai_chat.openai.key_label")}
-            description={
-              agentProviderState.openai.configured
-                ? t("settings.plugin.ai_chat.openai.configured")
-                : t("settings.plugin.ai_chat.openai.not_configured")
-            }
+            label={t("settings.plugin.ai_chat.agent_api.provider.label")}
+            description={t("settings.plugin.ai_chat.agent_api.provider.description")}
             control={
-              <div class="flex w-full max-w-md flex-col gap-2 @sm:flex-row">
-                <SettingsInput
-                  type="password"
-                  value={openAiApiKey()}
-                  placeholder={t("settings.plugin.ai_chat.openai.placeholder")}
-                  autocomplete="off"
-                  spellcheck={false}
-                  onInput={(event) => setOpenAiApiKey(event.currentTarget.value)}
-                />
-                <SettingsToolbarAction
-                  variant="primary"
-                  disabled={openAiApiKey().trim() === ""}
-                  onClick={() => {
-                    void saveOpenAiApiKey(openAiApiKey()).then(() => setOpenAiApiKey(""));
-                  }}
-                >
-                  {t("settings.plugin.ai_chat.openai.save")}
-                </SettingsToolbarAction>
-                <SettingsToolbarAction
-                  disabled={!agentProviderState.openai.configured}
-                  onClick={() => void clearOpenAiApiKey()}
-                >
-                  {t("settings.plugin.ai_chat.openai.clear")}
-                </SettingsToolbarAction>
-              </div>
+              <SettingsSelect
+                options={AGENT_API_PROVIDER_PRESETS.map((item) => ({
+                  value: item.id,
+                  label: item.name,
+                }))}
+                value={agentApiProvider()}
+                onChange={selectAgentApiProvider}
+              />
             }
           />
+          <Show when={agentApiProvider() !== "codex_cli"}>
+            <SettingsBanner
+              tone="warning"
+              title={t("settings.plugin.ai_chat.agent_api.cost_title")}
+              description={t("settings.plugin.ai_chat.agent_api.cost_description")}
+            />
+            <div class="grid gap-2 @lg:grid-cols-2">
+              <SettingsFieldRow
+                stacked
+                label={t("settings.plugin.ai_chat.agent_api.base_url.label")}
+                description={t("settings.plugin.ai_chat.agent_api.base_url.description")}
+                control={
+                  <SettingsInput
+                    type="url"
+                    value={agentApiBaseUrl()}
+                    placeholder="https://api.example.com/v1"
+                    readOnly={agentApiProvider() !== "custom" && agentApiProvider() !== "lm_studio"}
+                    spellcheck={false}
+                    onInput={(event) => setAgentApiBaseUrl(event.currentTarget.value)}
+                  />
+                }
+              />
+              <SettingsFieldRow
+                stacked
+                label={t("settings.plugin.ai_chat.agent_api.model.label")}
+                description={t("settings.plugin.ai_chat.agent_api.model.description")}
+                control={
+                  <SettingsInput
+                    type="text"
+                    value={agentApiModel()}
+                    placeholder={agentApiProviderPreset(agentApiProvider()).model}
+                    spellcheck={false}
+                    onInput={(event) => setAgentApiModel(event.currentTarget.value)}
+                  />
+                }
+              />
+            </div>
+            <Show when={agentApiProviderNeedsKey(agentApiProvider())}>
+              <SettingsFieldRow
+                stacked
+                label={t("settings.plugin.ai_chat.agent_api.key_label")}
+                description={
+                  agentProviderState.openai.configured
+                    ? t("settings.plugin.ai_chat.agent_api.configured")
+                    : t("settings.plugin.ai_chat.agent_api.not_configured")
+                }
+                control={
+                  <div class="flex w-full max-w-md flex-col gap-2 @sm:flex-row">
+                    <SettingsInput
+                      class="@sm:min-w-0 @sm:flex-1"
+                      type="password"
+                      value={agentApiKey()}
+                      placeholder={t("settings.plugin.ai_chat.agent_api.placeholder")}
+                      autocomplete="off"
+                      spellcheck={false}
+                      onInput={(event) => setAgentApiKey(event.currentTarget.value)}
+                    />
+                    <SettingsToolbarAction
+                      variant="primary"
+                      class="min-w-16 shrink-0 whitespace-nowrap"
+                      disabled={agentApiKey().trim() === ""}
+                      onClick={() => {
+                        void saveAgentApiKey(agentApiKey(), currentAgentApiConfig()).then(() =>
+                          setAgentApiKey(""),
+                        );
+                      }}
+                    >
+                      {t("settings.plugin.ai_chat.agent_api.save")}
+                    </SettingsToolbarAction>
+                    <SettingsToolbarAction
+                      class="min-w-14 shrink-0 whitespace-nowrap"
+                      disabled={!agentProviderState.openai.configured}
+                      onClick={() => void clearAgentApiKey(currentAgentApiConfig())}
+                    >
+                      {t("settings.plugin.ai_chat.agent_api.clear")}
+                    </SettingsToolbarAction>
+                  </div>
+                }
+              />
+            </Show>
+          </Show>
           <Show when={agentProviderState.error}>
             {(error) => <SettingsBanner tone="error" description={error()} />}
           </Show>

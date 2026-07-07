@@ -65,10 +65,14 @@ async function runAgentProviderAdapters(
   };
 
   if (!(await input.codex.ready())) {
-    return invalid(["Codex CLI setup required"]);
+    if (!(await input.openai.byokReady())) {
+      return invalid(["Codex CLI or Agent API key setup required"]);
+    }
+    const openAiResult = await runProvider(input.openai, request, input.timeoutMs, "openai_api");
+    return openAiResult.kind === "failed" ? invalid([openAiResult.reason]) : openAiResult;
   }
 
-  const codexResult = await runProvider(input.codex, request, input.timeoutMs);
+  const codexResult = await runProvider(input.codex, request, input.timeoutMs, "codex_cli");
   return codexResult.kind === "failed" ? invalid([codexResult.reason]) : codexResult;
 }
 
@@ -76,6 +80,7 @@ async function runProvider(
   adapter: Pick<CodexPlanAdapter, "createPlan">,
   request: ProviderPlanRequest,
   timeoutMs: number | undefined,
+  expectedProviderKind: "codex_cli" | "openai_api",
 ): Promise<ProviderRunResult> {
   const result = await createPlanWithTimeout(adapter, request, timeoutMs);
   if (isProviderFailure(result)) return result;
@@ -83,8 +88,8 @@ async function runProvider(
 
   const validation = validateOrganizeInboxAgentPlan(isPlanEnvelope(result) ? result.value : result);
   if (validation.kind === "invalid") return validation;
-  if (validation.plan.provider.kind !== "codex_cli") {
-    return invalid(["plan.provider.kind must be codex_cli"]);
+  if (validation.plan.provider.kind !== expectedProviderKind) {
+    return invalid([`plan.provider.kind must be ${expectedProviderKind}`]);
   }
   if (validation.plan.sourceNote !== request.sourceNote) {
     return invalid(["plan.sourceNote must match requested source note"]);

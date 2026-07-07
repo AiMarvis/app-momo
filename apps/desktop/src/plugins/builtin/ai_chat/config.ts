@@ -1,4 +1,6 @@
 import type {
+  AgentApiChatConfig,
+  AgentApiProviderId,
   AiConfig,
   ChatMode,
   CodexApprovalPolicy,
@@ -22,8 +24,69 @@ const DEFAULT_SERVER_URL =
 // Internal guardrails: these are intentionally kept out of the settings UI.
 const DEFAULT_ROUND_LIMIT = 12;
 const DEFAULT_PROXY_TIMEOUT_MS = 15_000;
+const DEFAULT_AGENT_API_PROVIDER: AgentApiProviderId = "codex_cli";
+const AGENT_API_PROVIDER_PRESETS = [
+  {
+    id: "codex_cli",
+    name: "Codex CLI",
+    baseUrl: "",
+    model: "",
+    apiKeyRequired: false,
+  },
+  {
+    id: "nvidia",
+    name: "NVIDIA NIM",
+    baseUrl: "https://integrate.api.nvidia.com/v1",
+    model: "nvidia/nemotron-3-ultra-550b-a55b",
+    apiKeyRequired: true,
+  },
+  {
+    id: "openai",
+    name: "OpenAI",
+    baseUrl: "https://api.openai.com/v1",
+    model: "gpt-5.1",
+    apiKeyRequired: true,
+  },
+  {
+    id: "xai",
+    name: "xAI Grok",
+    baseUrl: "https://api.x.ai/v1",
+    model: "grok-4",
+    apiKeyRequired: true,
+  },
+  {
+    id: "deepseek",
+    name: "DeepSeek",
+    baseUrl: "https://api.deepseek.com/v1",
+    model: "deepseek-chat",
+    apiKeyRequired: true,
+  },
+  {
+    id: "lm_studio",
+    name: "LM Studio",
+    baseUrl: "http://localhost:1234/v1",
+    model: "local-model",
+    apiKeyRequired: false,
+  },
+  {
+    id: "custom",
+    name: "Custom OpenAI-compatible",
+    baseUrl: "https://",
+    model: "",
+    apiKeyRequired: true,
+  },
+] as const satisfies readonly AgentApiProviderPreset[];
+
+interface AgentApiProviderPreset {
+  readonly id: AgentApiProviderId;
+  readonly name: string;
+  readonly baseUrl: string;
+  readonly model: string;
+  readonly apiKeyRequired: boolean;
+}
 
 function createDefaultAiConfig(): AiConfig {
+  const agentPreset = agentApiProviderPreset(DEFAULT_AGENT_API_PROVIDER);
   return {
     provider: DEFAULT_PROVIDER,
     apiKey: null,
@@ -34,6 +97,10 @@ function createDefaultAiConfig(): AiConfig {
     codexSandbox: DEFAULT_CODEX_SANDBOX,
     codexApprovalPolicy: DEFAULT_CODEX_APPROVAL_POLICY,
     codexWebSearch: DEFAULT_CODEX_WEB_SEARCH,
+    agentApiProvider: DEFAULT_AGENT_API_PROVIDER,
+    agentApiBaseUrl: agentPreset.baseUrl,
+    agentApiModel: agentPreset.model,
+    agentApiName: agentPreset.name,
     roundLimit: DEFAULT_ROUND_LIMIT,
     proxyToolTimeoutMs: DEFAULT_PROXY_TIMEOUT_MS,
   };
@@ -82,9 +149,26 @@ function normalizeCodexApprovalPolicy(value: unknown): CodexApprovalPolicy {
   }
 }
 
+function normalizeAgentApiProvider(value: unknown): AgentApiProviderId {
+  switch (value) {
+    case "codex_cli":
+    case "custom":
+    case "deepseek":
+    case "lm_studio":
+    case "nvidia":
+    case "openai":
+    case "xai":
+      return value;
+    default:
+      return DEFAULT_AGENT_API_PROVIDER;
+  }
+}
+
 function normalizeAiConfig(raw: unknown): AiConfig {
   const defaults = createDefaultAiConfig();
   if (!isRecord(raw)) return defaults;
+  const agentApiProvider = normalizeAgentApiProvider(raw.agentApiProvider);
+  const agentApiPreset = agentApiProviderPreset(agentApiProvider);
 
   return {
     provider:
@@ -103,6 +187,19 @@ function normalizeAiConfig(raw: unknown): AiConfig {
     codexSandbox: normalizeCodexSandbox(raw.codexSandbox),
     codexApprovalPolicy: defaults.codexApprovalPolicy,
     codexWebSearch: defaults.codexWebSearch,
+    agentApiProvider,
+    agentApiBaseUrl:
+      typeof raw.agentApiBaseUrl === "string" && raw.agentApiBaseUrl.trim().length > 0
+        ? raw.agentApiBaseUrl.trim()
+        : agentApiPreset.baseUrl,
+    agentApiModel:
+      typeof raw.agentApiModel === "string" && raw.agentApiModel.trim().length > 0
+        ? raw.agentApiModel.trim()
+        : agentApiPreset.model,
+    agentApiName:
+      typeof raw.agentApiName === "string" && raw.agentApiName.trim().length > 0
+        ? raw.agentApiName.trim()
+        : agentApiPreset.name,
     roundLimit:
       typeof raw.roundLimit === "number" && Number.isFinite(raw.roundLimit) && raw.roundLimit > 0
         ? raw.roundLimit
@@ -126,9 +223,41 @@ function createCodexConfigFromAiConfig(
   };
 }
 
+function agentApiProviderPreset(provider: AgentApiProviderId): AgentApiProviderPreset {
+  for (const preset of AGENT_API_PROVIDER_PRESETS) {
+    if (preset.id === provider) return preset;
+  }
+  return {
+    id: "codex_cli",
+    name: "Codex CLI",
+    baseUrl: "",
+    model: "",
+    apiKeyRequired: false,
+  };
+}
+
+function createAgentApiConfigFromAiConfig(
+  config: Pick<AiConfig, "agentApiBaseUrl" | "agentApiModel" | "agentApiName" | "agentApiProvider">,
+): AgentApiChatConfig {
+  const providerId = normalizeAgentApiProvider(config.agentApiProvider);
+  const preset = agentApiProviderPreset(providerId);
+  return {
+    providerId,
+    providerName: config.agentApiName?.trim() || preset.name,
+    baseUrl: config.agentApiBaseUrl?.trim() || preset.baseUrl,
+    model: config.agentApiModel?.trim() || preset.model,
+  };
+}
+
+function agentApiProviderNeedsKey(provider: AgentApiProviderId): boolean {
+  return agentApiProviderPreset(provider).apiKeyRequired;
+}
+
 export {
+  AGENT_API_PROVIDER_PRESETS,
   AI_CHAT_SETTINGS_PLUGIN_ID,
   AI_CHAT_SECURE_KEYS,
+  DEFAULT_AGENT_API_PROVIDER,
   DEFAULT_CHAT_MODE,
   DEFAULT_CODEX_APPROVAL_POLICY,
   DEFAULT_CODEX_MODEL,
@@ -139,9 +268,13 @@ export {
   DEFAULT_PROXY_TIMEOUT_MS,
   DEFAULT_ROUND_LIMIT,
   DEFAULT_SERVER_URL,
+  agentApiProviderNeedsKey,
+  agentApiProviderPreset,
+  createAgentApiConfigFromAiConfig,
   createDefaultAiConfig,
   createCodexConfigFromAiConfig,
   normalizeAiConfig,
+  normalizeAgentApiProvider,
   normalizeChatMode,
   normalizeCodexApprovalPolicy,
   normalizeCodexSandbox,

@@ -86,6 +86,10 @@ describe("defaultOrganizeInbox", () => {
           serverUrl: "http://localhost:8080",
           codexModel: "gpt-5-codex",
           codexSandbox: "workspace-write",
+          agentApiProvider: "codex_cli",
+          agentApiBaseUrl: "",
+          agentApiModel: "",
+          agentApiName: "Codex CLI",
           codexApprovalPolicy: "on-request",
           codexWebSearch: true,
           roundLimit: 12,
@@ -114,12 +118,32 @@ describe("defaultOrganizeInbox", () => {
     expect(result.status).toBe("applied");
     expect(files.get(TASK_PATH)).toContain("Email Joon about homepage bug");
     expect(files.get(SOURCE_NOTE)).toContain("processed: true");
-    expect(mockInvoke).not.toHaveBeenCalledWith("agent_get_openai_api_key_status");
+    expect(mockInvoke).not.toHaveBeenCalledWith("agent_get_agent_api_key_status");
   });
 
-  it("does not call OpenAI when Codex is not ready", async () => {
-    mockInvoke.mockImplementation(async (command: string) => {
+  it("requires Codex or Agent API setup before organizing", async () => {
+    mockInvoke.mockImplementation(async (command: string, args?: unknown) => {
       if (command === "agent_check_codex_readiness") return { ready: false };
+      if (command === "plugin_get_settings_with_secrets") {
+        expect(args).toEqual({
+          pluginId: "ai-chat",
+          secureKeys: ["apiKey"],
+        });
+        return {
+          provider: "remote",
+          apiKey: null,
+          model: "gemini-3.1-flash-lite",
+          serverUrl: "http://localhost:8080",
+          codexModel: "",
+          codexSandbox: "read-only",
+          agentApiProvider: "codex_cli",
+          agentApiBaseUrl: "",
+          agentApiModel: "",
+          agentApiName: "Codex CLI",
+          roundLimit: 12,
+          proxyToolTimeoutMs: 15_000,
+        };
+      }
       throw new Error(`unexpected command: ${command}`);
     });
 
@@ -127,11 +151,115 @@ describe("defaultOrganizeInbox", () => {
 
     expect(result).toEqual({
       status: "invalid_plan",
-      errors: ["Codex CLI setup required"],
+      errors: ["Codex CLI or Agent API key setup required"],
     });
     expect(files.get(TASK_PATH)).toBeUndefined();
     expect(files.get(SOURCE_NOTE)).toBe(SOURCE_BODY);
     expect(mockInvoke).not.toHaveBeenCalledWith("agent_create_openai_plan", expect.anything());
-    expect(mockInvoke).not.toHaveBeenCalledWith("agent_get_openai_api_key_status");
+    expect(mockInvoke).not.toHaveBeenCalledWith("agent_get_agent_api_key_status");
+  });
+
+  it("uses the configured Agent API provider when Codex is not selected", async () => {
+    const nvidiaPlan: AgentPlan = {
+      ...CODEX_PLAN,
+      provider: { kind: "openai_api", name: "NVIDIA NIM" },
+    };
+    mockInvoke.mockImplementation(async (command: string, args?: unknown) => {
+      if (command === "plugin_get_settings_with_secrets") {
+        return {
+          provider: "remote",
+          apiKey: null,
+          model: "gemini-3.1-flash-lite",
+          serverUrl: "http://localhost:8080",
+          codexModel: "",
+          codexSandbox: "read-only",
+          agentApiProvider: "nvidia",
+          agentApiBaseUrl: "https://integrate.api.nvidia.com/v1",
+          agentApiModel: "nvidia/nemotron-3-ultra-550b-a55b",
+          agentApiName: "NVIDIA NIM",
+          roundLimit: 12,
+          proxyToolTimeoutMs: 15_000,
+        };
+      }
+      if (command === "agent_get_agent_api_key_status") {
+        expect(args).toMatchObject({
+          apiConfig: {
+            providerId: "nvidia",
+            providerName: "NVIDIA NIM",
+            baseUrl: "https://integrate.api.nvidia.com/v1",
+            model: "nvidia/nemotron-3-ultra-550b-a55b",
+          },
+        });
+        return { configured: true };
+      }
+      if (command === "agent_create_openai_compatible_plan") {
+        expect(args).toMatchObject({
+          request: {
+            sourceNote: SOURCE_NOTE,
+            sourceMarkdown: SOURCE_BODY,
+            apiConfig: {
+              providerId: "nvidia",
+              providerName: "NVIDIA NIM",
+              baseUrl: "https://integrate.api.nvidia.com/v1",
+              model: "nvidia/nemotron-3-ultra-550b-a55b",
+            },
+          },
+        });
+        return { kind: "plan", value: nvidiaPlan };
+      }
+      throw new Error(`unexpected command: ${command}`);
+    });
+
+    const result = await defaultOrganizeInbox(SOURCE_NOTE);
+
+    expect(result.status).toBe("applied");
+    expect(files.get(TASK_PATH)).toContain("Email Joon about homepage bug");
+    expect(mockInvoke).not.toHaveBeenCalledWith("agent_check_codex_readiness");
+  });
+
+  it("does not reuse another provider key when the selected Agent API provider changes", async () => {
+    mockInvoke.mockImplementation(async (command: string, args?: unknown) => {
+      if (command === "plugin_get_settings_with_secrets") {
+        return {
+          provider: "remote",
+          apiKey: null,
+          model: "gemini-3.1-flash-lite",
+          serverUrl: "http://localhost:8080",
+          codexModel: "",
+          codexSandbox: "read-only",
+          agentApiProvider: "xai",
+          agentApiBaseUrl: "https://api.x.ai/v1",
+          agentApiModel: "grok-4",
+          agentApiName: "xAI Grok",
+          roundLimit: 12,
+          proxyToolTimeoutMs: 15_000,
+        };
+      }
+      if (command === "agent_get_agent_api_key_status") {
+        expect(args).toMatchObject({
+          apiConfig: {
+            providerId: "xai",
+            providerName: "xAI Grok",
+            baseUrl: "https://api.x.ai/v1",
+            model: "grok-4",
+          },
+        });
+        return { configured: false };
+      }
+      throw new Error(`unexpected command: ${command}`);
+    });
+
+    const result = await defaultOrganizeInbox(SOURCE_NOTE);
+
+    expect(result).toEqual({
+      status: "invalid_plan",
+      errors: ["Codex CLI or Agent API key setup required"],
+    });
+    expect(files.get(TASK_PATH)).toBeUndefined();
+    expect(mockInvoke).not.toHaveBeenCalledWith(
+      "agent_create_openai_compatible_plan",
+      expect.anything(),
+    );
+    expect(mockInvoke).not.toHaveBeenCalledWith("agent_check_codex_readiness");
   });
 });

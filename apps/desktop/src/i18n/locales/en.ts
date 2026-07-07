@@ -215,8 +215,9 @@ export const EN_MESSAGES = {
     "use the right sidebar tab or the command to open the panel, then type in the box at the bottom.",
   "settings.plugin.ai_chat.agent_provider.title": "Agent provider",
   "settings.plugin.ai_chat.agent_provider.description":
-    "Codex CLI enables local agent actions. OpenAI API keys are stored in macOS Keychain and can be used when Codex is not ready.",
+    "Choose Codex CLI or an OpenAI-compatible API for local agent work. API keys are stored in macOS Keychain.",
   "settings.plugin.ai_chat.agent_provider.codex_ready": "Codex ready",
+  "settings.plugin.ai_chat.agent_provider.api_ready": "Agent API key ready",
   "settings.plugin.ai_chat.agent_provider.openai_ready": "OpenAI key ready",
   "settings.plugin.ai_chat.agent_provider.setup_required": "Setup required",
   "settings.plugin.ai_chat.agent_provider.codex": "Codex CLI",
@@ -258,6 +259,25 @@ export const EN_MESSAGES = {
   "settings.plugin.ai_chat.openai.placeholder": "Paste OpenAI API key",
   "settings.plugin.ai_chat.openai.save": "Save key",
   "settings.plugin.ai_chat.openai.clear": "Clear",
+  "settings.plugin.ai_chat.agent_api.provider.label": "Agent engine",
+  "settings.plugin.ai_chat.agent_api.provider.description":
+    "Pick the engine that runs chat and agent planning.",
+  "settings.plugin.ai_chat.agent_api.cost_title": "External API usage",
+  "settings.plugin.ai_chat.agent_api.cost_description":
+    "Requests go directly to the selected provider and may incur charges on that account.",
+  "settings.plugin.ai_chat.agent_api.base_url.label": "Base URL",
+  "settings.plugin.ai_chat.agent_api.base_url.description":
+    "Use an OpenAI-compatible /v1 endpoint. HTTP is allowed only for localhost.",
+  "settings.plugin.ai_chat.agent_api.model.label": "Model",
+  "settings.plugin.ai_chat.agent_api.model.description":
+    "Model ID sent to the selected provider.",
+  "settings.plugin.ai_chat.agent_api.key_label": "API key",
+  "settings.plugin.ai_chat.agent_api.configured": "An agent API key is stored in macOS Keychain.",
+  "settings.plugin.ai_chat.agent_api.not_configured": "No agent API key is stored on this device.",
+  "settings.plugin.ai_chat.agent_api.placeholder": "Paste provider API key",
+  "settings.plugin.ai_chat.agent_api.placeholder_optional": "Optional for local providers",
+  "settings.plugin.ai_chat.agent_api.save": "Save key",
+  "settings.plugin.ai_chat.agent_api.clear": "Clear",
   "settings.plugin.ai_chat.account_banner.title": "Have a Momo account?",
   "settings.plugin.ai_chat.account_banner.description":
     "Log in and choose “Momo (signed in)” — then chat just works; this screen is only for picking that mode, your key, or saving. Sign-in, session, and AI permissions are all in Account.",

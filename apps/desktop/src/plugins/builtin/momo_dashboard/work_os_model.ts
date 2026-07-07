@@ -4,6 +4,7 @@ const WORK_PRIORITIES = ["low", "medium", "high"] as const;
 const WORK_COLORS = ["slate", "yellow", "green", "blue", "purple", "rose"] as const;
 const WORK_PROJECT_MANUAL_SYNC_STATUSES = ["idle", "running", "succeeded", "failed"] as const;
 const PROJECT_OS_RUN_STATUSES = ["applied", "failed"] as const;
+const PROJECT_OS_GIT_RECEIPT_STATUSES = ["not_git_repo", "summarized", "failed"] as const;
 
 type WorkItemStatus = (typeof WORK_ITEM_STATUSES)[number];
 type WorkProjectStatus = (typeof PROJECT_STATUSES)[number];
@@ -11,6 +12,7 @@ type WorkPriority = (typeof WORK_PRIORITIES)[number];
 type WorkColor = (typeof WORK_COLORS)[number];
 type WorkProjectManualSyncStatus = (typeof WORK_PROJECT_MANUAL_SYNC_STATUSES)[number];
 type ProjectOsRunStatus = (typeof PROJECT_OS_RUN_STATUSES)[number];
+type ProjectOsGitReceiptStatus = (typeof PROJECT_OS_GIT_RECEIPT_STATUSES)[number];
 
 interface WorkItemDraft {
   readonly title: string;
@@ -54,6 +56,16 @@ interface WorkProjectManualSyncState {
   readonly error: string;
 }
 
+interface ProjectOsGitReceipt {
+  readonly status: ProjectOsGitReceiptStatus;
+  readonly headCommit: string;
+  readonly previousCommit: string;
+  readonly range: string;
+  readonly summary: string;
+  readonly changedPaths: readonly string[];
+  readonly error: string;
+}
+
 interface ProjectOsRunReceipt {
   readonly runId: string;
   readonly status: ProjectOsRunStatus;
@@ -61,6 +73,7 @@ interface ProjectOsRunReceipt {
   readonly createdIssueIds: readonly string[];
   readonly updatedIssueIds: readonly string[];
   readonly finishedAt: string;
+  readonly git?: ProjectOsGitReceipt | null;
 }
 
 interface ProjectOsIssueDraft {
@@ -152,6 +165,7 @@ interface WorkOsState {
 }
 
 export {
+  PROJECT_OS_GIT_RECEIPT_STATUSES,
   PROJECT_OS_RUN_STATUSES,
   PROJECT_STATUSES,
   WORK_COLORS,
@@ -160,6 +174,8 @@ export {
   WORK_PROJECT_MANUAL_SYNC_STATUSES,
 };
 export type {
+  ProjectOsGitReceipt,
+  ProjectOsGitReceiptStatus,
   ProjectOsIssueDraft,
   ProjectOsIssueUpdate,
   ProjectOsRunReceipt,

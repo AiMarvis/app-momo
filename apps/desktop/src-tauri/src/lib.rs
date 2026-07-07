@@ -13,6 +13,7 @@ mod plugin_fs;
 mod plugin_secrets;
 mod plugin_settings;
 mod project_os;
+mod project_os_git;
 mod search;
 mod secure_storage;
 mod sync;
@@ -118,8 +119,13 @@ pub fn run() {
             agent_provider::agent_get_openai_api_key_status,
             agent_provider::agent_set_openai_api_key,
             agent_provider::agent_clear_openai_api_key,
+            agent_provider::agent_get_agent_api_key_status,
+            agent_provider::agent_set_agent_api_key,
+            agent_provider::agent_clear_agent_api_key,
             agent_provider::agent_create_codex_plan,
             agent_provider::agent_run_codex_chat,
+            agent_provider::agent_create_openai_compatible_plan,
+            agent_provider::agent_run_openai_compatible_chat,
             // Plugin FS (sandboxed)
             plugin_fs::plugin_fs_read_text,
             plugin_fs::plugin_fs_write_text,
@@ -130,6 +136,7 @@ pub fn run() {
             plugin_fs::plugin_fs_read_dir,
             plugin_fs::plugin_fs_remove,
             project_os::project_os_choose_folder,
+            project_os_git::project_os_git_summary,
             project_os::project_os_scan_folder,
             // Plugin Settings
             plugin_settings::plugin_ensure_root_dirs,

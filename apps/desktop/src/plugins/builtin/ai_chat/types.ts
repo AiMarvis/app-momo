@@ -3,6 +3,14 @@ type FinishReason = string;
 type ChatSessionStatus = "idle" | "streaming" | "awaiting-approval" | "applying" | "error";
 type CodexSandboxMode = "read-only" | "workspace-write" | "danger-full-access";
 type CodexApprovalPolicy = "default" | "untrusted" | "on-request" | "never";
+type AgentApiProviderId =
+  | "codex_cli"
+  | "custom"
+  | "deepseek"
+  | "lm_studio"
+  | "nvidia"
+  | "openai"
+  | "xai";
 
 interface AiConfig {
   apiKey: string | null;
@@ -14,6 +22,10 @@ interface AiConfig {
   codexSandbox?: CodexSandboxMode;
   codexApprovalPolicy?: CodexApprovalPolicy;
   codexWebSearch?: boolean;
+  agentApiProvider?: AgentApiProviderId;
+  agentApiBaseUrl?: string;
+  agentApiModel?: string;
+  agentApiName?: string;
   // Internal guardrails; not exposed in settings UI.
   roundLimit?: number;
   proxyToolTimeoutMs?: number;
@@ -62,6 +74,13 @@ interface SendMessageOptions {
 interface CodexChatConfig {
   readonly model?: string;
   readonly sandbox: CodexSandboxMode;
+}
+
+interface AgentApiChatConfig {
+  readonly providerId: AgentApiProviderId;
+  readonly providerName: string;
+  readonly baseUrl: string;
+  readonly model: string;
 }
 
 interface StreamChunkPayload {
@@ -183,6 +202,10 @@ interface ChatConfigState {
   codexSandbox: CodexSandboxMode;
   codexApprovalPolicy: CodexApprovalPolicy;
   codexWebSearch: boolean;
+  agentApiProvider: AgentApiProviderId;
+  agentApiBaseUrl: string;
+  agentApiModel: string;
+  agentApiName: string;
   rawConfig: Record<string, unknown>;
   loading: boolean;
   saving: boolean;
@@ -211,6 +234,8 @@ interface ChatSnapshotSource {
 
 export type {
   AiConfig,
+  AgentApiChatConfig,
+  AgentApiProviderId,
   CodexApprovalPolicy,
   CodexChatConfig,
   CodexSandboxMode,

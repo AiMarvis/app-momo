@@ -1,6 +1,8 @@
+// @allow SIZE_OK - legacy Work OS store owns persisted dashboard state; this change only adds Project OS Git receipt fields.
 import { createStore } from "solid-js/store";
 
 import {
+  PROJECT_OS_GIT_RECEIPT_STATUSES,
   PROJECT_OS_RUN_STATUSES,
   PROJECT_STATUSES,
   WORK_COLORS,
@@ -9,6 +11,8 @@ import {
   WORK_PROJECT_MANUAL_SYNC_STATUSES,
 } from "./work_os_model";
 import type {
+  ProjectOsGitReceipt,
+  ProjectOsGitReceiptStatus,
   ProjectOsIssueDraft,
   ProjectOsIssueUpdate,
   ProjectOsRunReceipt,
@@ -32,6 +36,18 @@ import type {
 } from "./work_os_model";
 
 const WORK_OS_STORAGE_KEY = "momo-work-os-v1";
+
+const SECOND_BRAIN_ROOTS = new Set([
+  ".AgentRuns",
+  "Calendar",
+  "Inbox",
+  "Issues",
+  "Knowledge",
+  "Organize Inbox",
+  "Planning",
+  "Projects",
+  "Tasks",
+]);
 
 const EMPTY_WORK_OS_STATE: WorkOsState = {
   tasks: [],
@@ -521,7 +537,75 @@ function normalizeProjectOsRunReceipt(value: unknown): ProjectOsRunReceipt | nul
     createdIssueIds: normalizeStringList(value.createdIssueIds),
     updatedIssueIds: normalizeStringList(value.updatedIssueIds),
     finishedAt,
+    git: normalizeProjectOsGitReceipt(value.git),
   };
+}
+
+function normalizeProjectOsGitReceipt(value: unknown): ProjectOsGitReceipt | null {
+  if (!isRecord(value) || !isProjectOsGitReceiptStatus(value.status)) return null;
+  const changedPaths = normalizeStringList(value.changedPaths).filter(isSafeProjectOsReceiptPath);
+  const rejectedPathCount = normalizeStringList(value.changedPaths).length - changedPaths.length;
+  const normalizedError = normalizeText(value.error);
+  return {
+    status: value.status,
+    headCommit: normalizeText(value.headCommit),
+    previousCommit: normalizeText(value.previousCommit),
+    range: normalizeText(value.range),
+    summary: normalizeText(value.summary),
+    changedPaths,
+    error:
+      rejectedPathCount === 0
+        ? normalizedError
+        : [normalizedError, `${rejectedPathCount} unsafe Git receipt path(s) were ignored.`]
+            .filter(Boolean)
+            .join(" "),
+  };
+}
+
+function isSafeProjectOsReceiptPath(path: string): boolean {
+  const parts = path.split("/");
+  if (
+    path.startsWith("/") ||
+    path.startsWith("~/") ||
+    path.includes("\\") ||
+    path.includes("\0") ||
+    path.includes("->") ||
+    /^[A-Za-z]:[\\/]/.test(path) ||
+    parts.some((part) => part === "" || part === "." || part === "..") ||
+    parts.some(hasSensitiveProjectOsReceiptSegment)
+  ) {
+    return false;
+  }
+  return !parts.some((part) => SECOND_BRAIN_ROOTS.has(part));
+}
+
+function hasSensitiveProjectOsReceiptSegment(segment: string): boolean {
+  const lower = segment.toLowerCase();
+  if (looksSecretProjectOsReceiptToken(lower)) return true;
+  return lower
+    .split(/[\s{}\[\]()=>]+/)
+    .filter(Boolean)
+    .some(looksSecretProjectOsReceiptToken);
+}
+
+function looksSecretProjectOsReceiptToken(token: string): boolean {
+  return (
+    token === ".env" ||
+    token.startsWith(".env.") ||
+    token.includes("secret") ||
+    token.includes("token") ||
+    token.includes("credential") ||
+    token.includes("private") ||
+    token === "id_rsa" ||
+    token === "id_dsa" ||
+    token === "id_ecdsa" ||
+    token === "id_ed25519" ||
+    token === "credentials" ||
+    token.endsWith(".pem") ||
+    token.endsWith(".key") ||
+    token.endsWith(".p12") ||
+    token.endsWith(".pfx")
+  );
 }
 
 function emptyManualSyncState(): WorkProjectManualSyncState {
@@ -578,6 +662,10 @@ function isProjectOsRunStatus(value: unknown): value is ProjectOsRunStatus {
   return PROJECT_OS_RUN_STATUSES.some((status) => status === value);
 }
 
+function isProjectOsGitReceiptStatus(value: unknown): value is ProjectOsGitReceiptStatus {
+  return PROJECT_OS_GIT_RECEIPT_STATUSES.some((status) => status === value);
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -610,6 +698,7 @@ function createId(prefix: string): string {
 }
 
 export {
+  PROJECT_OS_GIT_RECEIPT_STATUSES,
   PROJECT_OS_RUN_STATUSES,
   PROJECT_STATUSES,
   WORK_COLORS,
@@ -647,6 +736,8 @@ export {
   workOsState,
 };
 export type {
+  ProjectOsGitReceipt,
+  ProjectOsGitReceiptStatus,
   ProjectOsIssueDraft,
   ProjectOsIssueUpdate,
   ProjectOsRunReceipt,

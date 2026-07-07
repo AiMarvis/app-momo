@@ -11,6 +11,7 @@ use tokio::time::timeout;
 use crate::plugin_secrets;
 
 mod codex;
+mod openai_compatible;
 
 const CODEX_LOGIN_STATUS_CHECK: &str = "codex login status";
 const CODEX_CHECK_TIMEOUT: Duration = Duration::from_secs(6);
@@ -44,6 +45,12 @@ pub struct OpenAiApiKeyStatus {
     configured: bool,
 }
 
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AgentApiKeyStatus {
+    configured: bool,
+}
+
 #[command]
 pub async fn agent_check_codex_readiness() -> CodexReadiness {
     check_codex_readiness().await
@@ -73,6 +80,33 @@ pub async fn agent_clear_openai_api_key() -> Result<OpenAiApiKeyStatus, String> 
 }
 
 #[command]
+pub async fn agent_get_agent_api_key_status(
+    api_config: openai_compatible::OpenAiCompatibleConfig,
+) -> Result<AgentApiKeyStatus, String> {
+    openai_compatible::agent_api_key_status(&api_config)
+        .map(|configured| AgentApiKeyStatus { configured })
+}
+
+#[command]
+pub async fn agent_set_agent_api_key(
+    api_config: openai_compatible::OpenAiCompatibleConfig,
+    api_key: String,
+) -> Result<AgentApiKeyStatus, String> {
+    openai_compatible::write_agent_api_key(&api_config, &api_key)?;
+    openai_compatible::agent_api_key_status(&api_config)
+        .map(|configured| AgentApiKeyStatus { configured })
+}
+
+#[command]
+pub async fn agent_clear_agent_api_key(
+    api_config: openai_compatible::OpenAiCompatibleConfig,
+) -> Result<AgentApiKeyStatus, String> {
+    openai_compatible::delete_agent_api_key(&api_config)?;
+    openai_compatible::agent_api_key_status(&api_config)
+        .map(|configured| AgentApiKeyStatus { configured })
+}
+
+#[command]
 pub async fn agent_create_codex_plan(
     request: codex::AgentPlanRequest,
 ) -> codex::AgentProviderOutput {
@@ -84,6 +118,20 @@ pub async fn agent_run_codex_chat(
     request: codex::CodexChatRequest,
 ) -> Result<codex::CodexChatResponse, String> {
     codex::run_codex_chat(request).await
+}
+
+#[command]
+pub async fn agent_create_openai_compatible_plan(
+    request: openai_compatible::OpenAiCompatiblePlanRequest,
+) -> codex::AgentProviderOutput {
+    openai_compatible::create_plan(request).await
+}
+
+#[command]
+pub async fn agent_run_openai_compatible_chat(
+    request: openai_compatible::OpenAiCompatibleChatRequest,
+) -> Result<openai_compatible::OpenAiCompatibleChatResponse, String> {
+    openai_compatible::run_chat(request).await
 }
 
 async fn check_codex_readiness() -> CodexReadiness {

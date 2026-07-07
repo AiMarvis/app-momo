@@ -3,6 +3,16 @@ import type {
   ProjectIssueStatus,
   ProjectSourceEvidence,
 } from "./project_analysis_plan";
+import {
+  isAbstractTitle,
+  isDeveloperOnlyTitle,
+  isGitMetadataTitle,
+} from "./project_analysis_title_validation";
+import {
+  hasGitWriteIntent,
+  hasSecondBrainReference,
+  sourcePathError,
+} from "./project_analysis_plan_path_safety";
 
 type RecordValue = Readonly<Record<string, unknown>>;
 type ValidationContext = {
@@ -23,6 +33,7 @@ function userText(value: unknown, label: string, context: ValidationContext): st
   if (text !== null && isOverTechnical(text)) {
     context.errors.push(`${label} must be written for a project user, not as technical diagnostics`);
   }
+  if (text !== null) validateAgentResultText(text, label, context);
   return text;
 }
 
@@ -102,35 +113,21 @@ function validateTitle(title: string, label: string, context: ValidationContext)
   if (isDeveloperOnlyTitle(title)) {
     context.errors.push(`${label} must describe user-visible work, not a file/function/error`);
   }
+  if (isGitMetadataTitle(title)) {
+    context.errors.push(`${label} must describe user-visible work, not Git metadata`);
+  }
   if (isAbstractTitle(title)) {
     context.errors.push(`${label} must name a concrete project issue`);
   }
 }
 
-function sourcePathError(path: string): "second_brain" | "unsafe" | null {
-  if (
-    path.startsWith("/") ||
-    path.startsWith("~/") ||
-    path.includes("\\") ||
-    path.includes("\0") ||
-    path.includes("->") ||
-    /^[A-Za-z]:[\\/]/.test(path) ||
-    path.split("/").some((part) => part === "" || part === "." || part === "..")
-  ) {
-    return "unsafe";
+function validateAgentResultText(text: string, label: string, context: ValidationContext): void {
+  if (hasGitWriteIntent(text)) {
+    context.errors.push(`${label} must not request Git write actions`);
   }
-  const root = path.split("/")[0] ?? "";
-  return SECOND_BRAIN_ROOTS.has(root) ? "second_brain" : null;
-}
-
-function isDeveloperOnlyTitle(value: string): boolean {
-  return (
-    /(?:^|\/)[^/\s]+\.(?:cts|go|js|jsx|json|md|mts|py|rs|ts|tsx)$/i.test(value) ||
-    /^[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)?\(\)$/.test(value) ||
-    /^(?:Error:|Internal error|Internal Server Error|RangeError|ReferenceError|SyntaxError|TypeError|Unhandled exception)/i.test(
-      value,
-    )
-  );
+  if (hasSecondBrainReference(text)) {
+    context.errors.push(`${label} must not reference second-brain paths`);
+  }
 }
 
 function isOverTechnical(value: string): boolean {
@@ -155,23 +152,6 @@ function normalizeText(value: string): string {
   return value.trim().toLowerCase().replace(/\s+/g, " ");
 }
 
-function isAbstractTitle(value: string): boolean {
-  const normalized = normalizeText(value);
-  return (
-    ABSTRACT_TITLES.has(normalized) ||
-    /^(?:improve|fix|update|enhance|optimize|refactor|clean\s*up|cleanup|review|handle|address|work on)\s+(?:the\s+)?(?:whole\s+|overall\s+|general\s+)?(?:project|app|application|system|codebase|workflow|quality|issues?|things?|stuff|it|this|that|everything)(?:\s+(?:later|soon|overall|generally))?$/.test(
-      normalized,
-    ) ||
-    /^(?:project|app|application|system|codebase|workflow|quality)\s+(?:improvement|cleanup|refactor(?:ing)?|optimization|maintenance|fix(?:es)?|updates?)$/.test(
-      normalized,
-    ) ||
-    /^(?:프로젝트|앱|어플|시스템|코드|코드베이스|전체|품질)\s*(?:개선|수정|정리|최적화|리팩토링|고도화)\s*(?:필요)?$/.test(
-      normalized,
-    ) ||
-    /^(?:개선|수정|정리|최적화|리팩토링)\s*(?:필요|하기)?$/.test(normalized)
-  );
-}
-
 function isRecord(value: unknown): value is RecordValue {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -181,27 +161,7 @@ function pushError(context: ValidationContext, error: string): readonly [] {
   return [];
 }
 
-const ABSTRACT_TITLES = new Set([
-  "improve project",
-  "needs refactoring",
-  "project improvement",
-  "refactoring needed",
-  "리팩토링 필요",
-  "프로젝트 개선",
-]);
 const NON_ACTIONS = new Set(["discuss later", "do something", "fix it", "tbd", "나중에 처리", "추후 논의"]);
-const SECOND_BRAIN_ROOTS = new Set([
-  ".AgentRuns",
-  "Calendar",
-  "Inbox",
-  "Issues",
-  "Knowledge",
-  "Organize Inbox",
-  "Planning",
-  "Projects",
-  "Tasks",
-]);
-
 export {
   isNonActionable,
   isRecord,
@@ -214,6 +174,7 @@ export {
   sourceEvidenceArray,
   statusFor,
   userText,
+  validateAgentResultText,
   validateTitle,
 };
 export type { ValidationContext };

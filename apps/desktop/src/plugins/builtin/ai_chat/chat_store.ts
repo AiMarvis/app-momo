@@ -17,6 +17,8 @@ import {
   DEFAULT_PROXY_TIMEOUT_MS,
   DEFAULT_ROUND_LIMIT,
   DEFAULT_SERVER_URL,
+  agentApiProviderNeedsKey,
+  createAgentApiConfigFromAiConfig,
   createCodexConfigFromAiConfig,
   createDefaultAiConfig,
   normalizeAiConfig,
@@ -27,6 +29,8 @@ import { hasRespondingSession } from "./responding_state";
 import { prepareSelectedTextForSend } from "./selected_text_context";
 import type {
   AiConfig,
+  AgentApiChatConfig,
+  AgentApiProviderId,
   ChatApprovalMessage,
   CodexChatConfig,
   CodexSandboxMode,
@@ -71,6 +75,10 @@ const [chatState, setChatState] = createStore<ChatStoreState>({
     codexSandbox: DEFAULT_CODEX_SANDBOX,
     codexApprovalPolicy: DEFAULT_CODEX_APPROVAL_POLICY,
     codexWebSearch: DEFAULT_CODEX_WEB_SEARCH,
+    agentApiProvider: createDefaultAiConfig().agentApiProvider ?? "codex_cli",
+    agentApiBaseUrl: createDefaultAiConfig().agentApiBaseUrl ?? "",
+    agentApiModel: createDefaultAiConfig().agentApiModel ?? "",
+    agentApiName: createDefaultAiConfig().agentApiName ?? "Codex CLI",
     rawConfig: {},
     loading: false,
     saving: false,
@@ -93,11 +101,16 @@ interface SaveConfigInput {
   readonly defaultMode: ChatMode;
   readonly codexModel: string;
   readonly codexSandbox: CodexSandboxMode;
+  readonly agentApiProvider?: AgentApiProviderId;
+  readonly agentApiBaseUrl?: string;
+  readonly agentApiModel?: string;
+  readonly agentApiName?: string;
 }
 
 setContextKey("aiResponding", false);
 
 function createDefaultConfigState(): ChatStoreState["config"] {
+  const defaults = createDefaultAiConfig();
   return {
     apiKey: "",
     provider: DEFAULT_PROVIDER,
@@ -108,6 +121,10 @@ function createDefaultConfigState(): ChatStoreState["config"] {
     codexSandbox: DEFAULT_CODEX_SANDBOX,
     codexApprovalPolicy: DEFAULT_CODEX_APPROVAL_POLICY,
     codexWebSearch: DEFAULT_CODEX_WEB_SEARCH,
+    agentApiProvider: defaults.agentApiProvider ?? "codex_cli",
+    agentApiBaseUrl: defaults.agentApiBaseUrl ?? "",
+    agentApiModel: defaults.agentApiModel ?? "",
+    agentApiName: defaults.agentApiName ?? "Codex CLI",
     rawConfig: {},
     loading: false,
     saving: false,
@@ -153,6 +170,10 @@ function isSessionBusy(session: ChatSessionState | null | undefined): boolean {
 
 function createCodexChatConfig(): CodexChatConfig {
   return createCodexConfigFromAiConfig(chatState.config);
+}
+
+function createAgentApiChatConfig(): AgentApiChatConfig {
+  return createAgentApiConfigFromAiConfig(chatState.config);
 }
 
 function setSelectedMode(mode: ChatMode): void {
@@ -641,25 +662,50 @@ async function sendMessage(content: string, options: SendMessageOptions = {}): P
     setChatState("sessions", sessionId, "error", null);
     setChatState("sessions", sessionId, "finishReason", null);
 
-    if (agentProviderState.providerStatus !== "codex_cli") {
+    if (chatState.config.agentApiProvider === "codex_cli" && !agentProviderState.codex.ready) {
       const message = "Codex CLI is not ready";
       setError(sessionId, { sessionId, message });
       appendSystemMessage(sessionId, message);
       return true;
     }
 
-    const response = await invoke<CodexChatResponse>("agent_run_codex_chat", {
-      request: {
-        content: trimmed,
-        mode: chatState.selectedMode,
-        codexConfig: createCodexChatConfig(),
-        editorContext: {
-          ...editorContext,
-          selectedText: preparedSelection.selectedText,
-          embeddedFiles: preparedFiles.embeddedFiles,
-        },
-      },
-    });
+    if (
+      chatState.config.agentApiProvider !== "codex_cli" &&
+      agentApiProviderNeedsKey(chatState.config.agentApiProvider) &&
+      !agentProviderState.openai.configured
+    ) {
+      const message = "Agent API key is not configured";
+      setError(sessionId, { sessionId, message });
+      appendSystemMessage(sessionId, message);
+      return true;
+    }
+
+    const response =
+      chatState.config.agentApiProvider === "codex_cli"
+        ? await invoke<CodexChatResponse>("agent_run_codex_chat", {
+            request: {
+              content: trimmed,
+              mode: chatState.selectedMode,
+              codexConfig: createCodexChatConfig(),
+              editorContext: {
+                ...editorContext,
+                selectedText: preparedSelection.selectedText,
+                embeddedFiles: preparedFiles.embeddedFiles,
+              },
+            },
+          })
+        : await invoke<CodexChatResponse>("agent_run_openai_compatible_chat", {
+            request: {
+              content: trimmed,
+              mode: chatState.selectedMode,
+              apiConfig: createAgentApiChatConfig(),
+              editorContext: {
+                ...editorContext,
+                selectedText: preparedSelection.selectedText,
+                embeddedFiles: preparedFiles.embeddedFiles,
+              },
+            },
+          });
     const responseContent = response.content.trim();
     if (!responseContent) {
       const message = "Codex CLI returned no response";
@@ -736,6 +782,10 @@ async function loadConfig(): Promise<void> {
       config.codexApprovalPolicy ?? DEFAULT_CODEX_APPROVAL_POLICY,
     );
     setChatState("config", "codexWebSearch", config.codexWebSearch ?? DEFAULT_CODEX_WEB_SEARCH);
+    setChatState("config", "agentApiProvider", config.agentApiProvider ?? "codex_cli");
+    setChatState("config", "agentApiBaseUrl", config.agentApiBaseUrl ?? "");
+    setChatState("config", "agentApiModel", config.agentApiModel ?? "");
+    setChatState("config", "agentApiName", config.agentApiName ?? "Codex CLI");
     setChatState("selectedMode", config.defaultMode ?? DEFAULT_CHAT_MODE);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
@@ -757,6 +807,10 @@ async function loadConfig(): Promise<void> {
       "codexWebSearch",
       defaults.codexWebSearch ?? DEFAULT_CODEX_WEB_SEARCH,
     );
+    setChatState("config", "agentApiProvider", defaults.agentApiProvider ?? "codex_cli");
+    setChatState("config", "agentApiBaseUrl", defaults.agentApiBaseUrl ?? "");
+    setChatState("config", "agentApiModel", defaults.agentApiModel ?? "");
+    setChatState("config", "agentApiName", defaults.agentApiName ?? "Codex CLI");
     setChatState("selectedMode", defaults.defaultMode ?? DEFAULT_CHAT_MODE);
     setChatState("config", "rawConfig", {});
     setChatState("config", "error", message);
@@ -770,6 +824,9 @@ async function saveConfig(input: SaveConfigInput): Promise<boolean> {
   setChatState("config", "error", null);
   try {
     const currentConfig = chatState.config.rawConfig as Partial<AiConfig>;
+    const defaults = createDefaultAiConfig();
+    const agentApiProvider =
+      input.agentApiProvider ?? chatState.config.agentApiProvider ?? defaults.agentApiProvider;
     const nextConfig: AiConfig = {
       provider: input.provider,
       apiKey: input.apiKey || null,
@@ -780,6 +837,25 @@ async function saveConfig(input: SaveConfigInput): Promise<boolean> {
       codexSandbox: input.codexSandbox,
       codexApprovalPolicy: DEFAULT_CODEX_APPROVAL_POLICY,
       codexWebSearch: DEFAULT_CODEX_WEB_SEARCH,
+      agentApiProvider,
+      agentApiBaseUrl: (
+        input.agentApiBaseUrl ??
+        chatState.config.agentApiBaseUrl ??
+        defaults.agentApiBaseUrl ??
+        ""
+      ).trim(),
+      agentApiModel: (
+        input.agentApiModel ??
+        chatState.config.agentApiModel ??
+        defaults.agentApiModel ??
+        ""
+      ).trim(),
+      agentApiName: (
+        input.agentApiName ??
+        chatState.config.agentApiName ??
+        defaults.agentApiName ??
+        "Codex CLI"
+      ).trim(),
       roundLimit: currentConfig.roundLimit ?? DEFAULT_ROUND_LIMIT,
       proxyToolTimeoutMs: currentConfig.proxyToolTimeoutMs ?? DEFAULT_PROXY_TIMEOUT_MS,
     };
@@ -803,6 +879,10 @@ async function saveConfig(input: SaveConfigInput): Promise<boolean> {
       "codexWebSearch",
       nextConfig.codexWebSearch ?? DEFAULT_CODEX_WEB_SEARCH,
     );
+    setChatState("config", "agentApiProvider", nextConfig.agentApiProvider ?? "codex_cli");
+    setChatState("config", "agentApiBaseUrl", nextConfig.agentApiBaseUrl ?? "");
+    setChatState("config", "agentApiModel", nextConfig.agentApiModel ?? "");
+    setChatState("config", "agentApiName", nextConfig.agentApiName ?? "Codex CLI");
     setChatState("selectedMode", nextConfig.defaultMode ?? DEFAULT_CHAT_MODE);
     return true;
   } catch (error) {

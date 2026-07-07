@@ -1,3 +1,4 @@
+// @allow SIZE_OK - legacy Work OS persistence regression suite; this change only adds Project OS Git receipt coverage.
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 class StorageMock {
@@ -125,6 +126,15 @@ describe("Work OS store", () => {
       createdIssueIds: ["work-new"],
       updatedIssueIds: ["work-existing"],
       finishedAt: "2026-07-04T01:02:00.000Z",
+      git: {
+        status: "summarized",
+        headCommit: "abc1234",
+        previousCommit: "def5678",
+        range: "def5678..abc1234",
+        summary: "결제 복구 안내와 온보딩 문구 변경이 프로젝트 증거로 포함되었습니다.",
+        changedPaths: ["docs/payment-recovery.md", "src/onboarding/checklist.tsx"],
+        error: "",
+      },
     });
 
     const second = await loadStore();
@@ -152,9 +162,110 @@ describe("Work OS store", () => {
           createdIssueIds: ["work-new"],
           updatedIssueIds: ["work-existing"],
           finishedAt: "2026-07-04T01:02:00.000Z",
+          git: {
+            status: "summarized",
+            headCommit: "abc1234",
+            previousCommit: "def5678",
+            range: "def5678..abc1234",
+            summary: "결제 복구 안내와 온보딩 문구 변경이 프로젝트 증거로 포함되었습니다.",
+            changedPaths: ["docs/payment-recovery.md", "src/onboarding/checklist.tsx"],
+            error: "",
+          },
         },
       },
     ]);
+  });
+
+  it("normalizes old Project OS receipts without Git evidence to null Git receipt", async () => {
+    localStorage.setItem(
+      "momo-work-os-v1",
+      JSON.stringify({
+        tasks: [],
+        issues: [],
+        projects: [
+          {
+            id: "project-legacy-receipt",
+            name: "Legacy receipt",
+            status: "active",
+            createdAt: "2026-07-01T00:00:00.000Z",
+            lastProjectOsRunReceipt: {
+              runId: "run-legacy",
+              status: "applied",
+              summary: "Created readable project work",
+              createdIssueIds: ["work-new"],
+              updatedIssueIds: [],
+              finishedAt: "2026-07-04T01:02:00.000Z",
+            },
+          },
+        ],
+        ideas: [],
+      }),
+    );
+
+    const store = await loadStore();
+    store.initWorkOsStore();
+
+    expect(store.workOsState.projects[0]?.lastProjectOsRunReceipt).toMatchObject({
+      runId: "run-legacy",
+      git: null,
+    });
+  });
+
+  it("drops unsafe paths from persisted Project OS Git receipts", async () => {
+    localStorage.setItem(
+      "momo-work-os-v1",
+      JSON.stringify({
+        tasks: [],
+        issues: [],
+        projects: [
+          {
+            id: "project-unsafe-git-receipt",
+            name: "Unsafe receipt",
+            status: "active",
+            createdAt: "2026-07-01T00:00:00.000Z",
+            lastProjectOsRunReceipt: {
+              runId: "run-unsafe-git",
+              status: "applied",
+              summary: "Created readable project work",
+              createdIssueIds: ["work-new"],
+              updatedIssueIds: [],
+              finishedAt: "2026-07-04T01:02:00.000Z",
+              git: {
+                status: "summarized",
+                headCommit: "abc1234",
+                previousCommit: "def5678",
+                range: "def5678..abc1234",
+                summary: "Git receipt restored from storage.",
+                changedPaths: [
+                  "docs/payment-recovery.md",
+                  "/Inbox/private.md",
+                  "../outside.md",
+                  "Knowledge/notes.md",
+                  "Tasks/private.md",
+	                  "Organize Inbox/incoming.md",
+	                  "docs/Knowledge/notes.md",
+	                  ".env",
+                  "config/app.pem",
+                  "docs/private-plan.md",
+                  "src/api_token.ts",
+                ],
+                error: "",
+              },
+            },
+          },
+        ],
+        ideas: [],
+      }),
+    );
+
+    const store = await loadStore();
+    store.initWorkOsStore();
+
+    expect(store.workOsState.projects[0]?.lastProjectOsRunReceipt?.git).toMatchObject({
+      status: "summarized",
+      changedPaths: ["docs/payment-recovery.md"],
+      error: "10 unsafe Git receipt path(s) were ignored.",
+    });
   });
 
   it("persists Project OS issue fields for non-developer readers", async () => {

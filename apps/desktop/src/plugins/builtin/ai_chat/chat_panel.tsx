@@ -11,6 +11,7 @@ import {
 } from "./agent_provider";
 import { shouldBlockRemotePermission } from "./chat_panel_permissions";
 import { chatState, loadConfig } from "./chat_store";
+import { agentApiProviderNeedsKey, createAgentApiConfigFromAiConfig } from "./config";
 import { ChatHeader } from "./components/chat_header";
 import { ChatInput } from "./components/chat_input";
 import { ChatMessages } from "./components/chat_messages";
@@ -176,17 +177,25 @@ function ChatPanel(): JSX.Element {
     chatState.config.provider === "remote" && !chatState.config.loading && !authState.authenticated;
   const needsRemotePermission = () =>
     shouldBlockRemotePermission({
-      codexReady: agentProviderState.providerStatus === "codex_cli",
+      codexReady:
+        agentProviderState.providerStatus === "codex_cli" || selectedAgentProvider() === "api_provider",
       provider: chatState.config.provider,
       configLoading: chatState.config.loading,
       authenticated: authState.authenticated,
       pluginAuthorized: getAuthService()?.isPluginAuthorized("ai-chat") === true,
     });
+  const selectedAgentProvider = () =>
+    chatState.config.agentApiProvider === "codex_cli" ? "codex_cli" : "api_provider";
+  const agentApiKeyMissing = () =>
+    chatState.config.agentApiProvider !== "codex_cli" &&
+    agentApiProviderNeedsKey(chatState.config.agentApiProvider) &&
+    !agentProviderState.openai.configured;
 
   // Reload config when panel mounts so we pick up changes made in Settings.
   onMount(() => {
-    void loadConfig();
-    void refreshAgentProviderStatus();
+    void loadConfig().then(() =>
+      refreshAgentProviderStatus(createAgentApiConfigFromAiConfig(chatState.config)),
+    );
   });
 
   createEffect(() => {
@@ -364,7 +373,9 @@ function ChatPanel(): JSX.Element {
       <Show
         when={shouldRenderExistingAiChatSurface({
           apiKeyMissing: isApiKeyMissing(),
+          agentApiKeyMissing: agentApiKeyMissing(),
           remoteLoginRequired: needsRemoteLogin(),
+          selectedAgentProvider: selectedAgentProvider(),
         })}
         fallback={<AccessPrompt />}
       >
