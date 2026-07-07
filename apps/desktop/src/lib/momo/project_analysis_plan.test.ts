@@ -110,6 +110,10 @@ describe("ProjectAnalysisPlan boundary", () => {
     expect(prompt).toContain("Confirm who owns launch review");
     expect(prompt).toContain('"lastRunReceipt"');
     expect(prompt).toContain("Found 1 project-moving task from the linked folder.");
+    expect(prompt).toContain("Top-level JSON object must include kind, projectId, summary, creates, and updates.");
+    expect(prompt).toContain('"topLevelRequiredFields"');
+    expect(prompt).toContain('"creates": [');
+    expect(prompt).toContain('"updates": [');
     expect(prompt).not.toContain("Organize Inbox");
   });
 

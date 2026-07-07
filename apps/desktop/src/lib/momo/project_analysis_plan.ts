@@ -78,6 +78,7 @@ function buildProjectAnalysisPrompt(input: ProjectAnalysisPromptInput): string {
     lastRunReceipt: input.lastRunReceipt,
     outputContract: {
       kind: "project_analysis",
+      topLevelRequiredFields: ["kind", "projectId", "summary", "creates", "updates"],
       issueRequiredFields: [
         "title",
         "summary",
@@ -90,12 +91,53 @@ function buildProjectAnalysisPrompt(input: ProjectAnalysisPromptInput): string {
         "sourceEvidence",
         "technicalDetails",
       ],
+      jsonOnlyRule:
+        'Return the ProjectAnalysisPlan object itself. Do not wrap it in {"plan": ...}, Markdown fences, or explanatory prose.',
+      placeholderRule: "Replace outputShape placeholder strings with evidence-specific values.",
+      emptyResultRule:
+        "If no safe project issue should be created or updated, return creates: [] and updates: [] with a short summary.",
       titleRule: "Use one owner-readable sentence. Keep filenames, functions, and commit hashes out of titles.",
       scopeRule: "Use only the linked project evidence in this payload and return Project OS issue operations only.",
+      outputShape: {
+        kind: "project_analysis",
+        projectId: input.projectId,
+        summary: "One sentence describing what project-moving work was found.",
+        creates: [
+          {
+            kind: "project_issue",
+            projectId: input.projectId,
+            title: "Owner-readable project issue title",
+            summary: "Why this issue matters for the project.",
+            userOutcome: "The user-visible outcome this work enables.",
+            nextAction: "The next concrete action a project owner can take.",
+            status: "todo",
+            statusReason: "Why this status fits the evidence.",
+            priority: "medium",
+            priorityReason: "Why this priority fits the evidence.",
+            sourceEvidence: ["relative/path/from/provided/evidence"],
+            technicalDetails: "Brief implementation context grounded in the evidence.",
+          },
+        ],
+        updates: [
+          {
+            kind: "project_issue_update",
+            projectId: input.projectId,
+            issueId: "existing_issue_id_from_existingProjectOsIssues",
+            summary: "Optional updated summary.",
+            status: "doing",
+            statusReason: "Why this status changed.",
+            priority: "medium",
+            priorityReason: "Why this priority changed.",
+            sourceEvidence: ["relative/path/from/provided/evidence"],
+            technicalDetails: "Brief update context grounded in the evidence.",
+          },
+        ],
+      },
     },
   };
   return [
     "You are Project OS analysis. Return only a JSON ProjectAnalysisPlan.",
+    "Top-level JSON object must include kind, projectId, summary, creates, and updates.",
     "Group technical evidence by user value so project owners can decide the next action.",
     "Reject unsafe paths, outside-folder evidence, Git write intent, and developer-only issue titles.",
     JSON.stringify(payload, null, 2),
