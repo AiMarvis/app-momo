@@ -213,9 +213,16 @@ export const EN_MESSAGES = {
   "settings.plugin.ai_chat.guide.open_chat_label": "Open chat:",
   "settings.plugin.ai_chat.guide.open_chat_text":
     "use the right sidebar tab or the command to open the panel, then type in the box at the bottom.",
+  "settings.plugin.ai_chat.chat_connection.title": "Regular AI Chat connection",
+  "settings.plugin.ai_chat.chat_connection.description":
+    "Momo/Gemini connection settings for regular chat. Project OS issue creation uses the agent provider above.",
+  "settings.plugin.ai_chat.chat_connection.summary":
+    "Open when changing a personal Gemini key or regular chat connection",
   "settings.plugin.ai_chat.agent_provider.title": "Agent provider",
   "settings.plugin.ai_chat.agent_provider.description":
     "Choose Codex CLI or an OpenAI-compatible API for local agent work. API keys are stored in macOS Keychain.",
+  "settings.plugin.ai_chat.agent_provider.project_os_hint":
+    "Project OS Analyze/Sync uses the provider below to create Project Issues. The connection setting above is for regular AI Chat.",
   "settings.plugin.ai_chat.agent_provider.codex_ready": "Codex ready",
   "settings.plugin.ai_chat.agent_provider.api_ready": "Agent API key ready",
   "settings.plugin.ai_chat.agent_provider.openai_ready": "OpenAI key ready",
@@ -259,9 +266,9 @@ export const EN_MESSAGES = {
   "settings.plugin.ai_chat.openai.placeholder": "Paste OpenAI API key",
   "settings.plugin.ai_chat.openai.save": "Save key",
   "settings.plugin.ai_chat.openai.clear": "Clear",
-  "settings.plugin.ai_chat.agent_api.provider.label": "Agent engine",
+  "settings.plugin.ai_chat.agent_api.provider.label": "Project OS / Agent API provider",
   "settings.plugin.ai_chat.agent_api.provider.description":
-    "Pick the engine that runs chat and agent planning.",
+    "Choose the provider for Project OS issue creation and AI Chat agent work: Codex CLI, NVIDIA NIM, xAI, DeepSeek, custom, or LM Studio.",
   "settings.plugin.ai_chat.agent_api.cost_title": "External API usage",
   "settings.plugin.ai_chat.agent_api.cost_description":
     "Requests go directly to the selected provider and may incur charges on that account.",

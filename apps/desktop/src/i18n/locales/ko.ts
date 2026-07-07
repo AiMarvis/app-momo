@@ -214,9 +214,15 @@ export const KO_MESSAGES = {
   "settings.plugin.ai_chat.guide.open_chat_label": "채팅 열기:",
   "settings.plugin.ai_chat.guide.open_chat_text":
     "오른쪽 사이드바 탭 또는 명령으로 패널을 연 뒤, 하단 입력창에 질문을 입력하세요.",
+  "settings.plugin.ai_chat.chat_connection.title": "일반 AI 채팅 연결",
+  "settings.plugin.ai_chat.chat_connection.description":
+    "일반 채팅의 Momo/Gemini 연결 설정이에요. Project OS 이슈 생성은 위의 에이전트 제공자 설정을 사용해요.",
+  "settings.plugin.ai_chat.chat_connection.summary": "개인 Gemini 키나 일반 채팅 연결을 바꿀 때 열기",
   "settings.plugin.ai_chat.agent_provider.title": "에이전트 제공자",
   "settings.plugin.ai_chat.agent_provider.description":
     "Codex CLI 또는 OpenAI-compatible API로 로컬 에이전트 작업을 실행해요. API 키는 macOS Keychain에 저장돼요.",
+  "settings.plugin.ai_chat.agent_provider.project_os_hint":
+    "Project OS Analyze/Sync는 아래 제공자를 사용해 프로젝트 이슈를 생성해요. 위의 연결 방식은 일반 AI 채팅용이에요.",
   "settings.plugin.ai_chat.agent_provider.codex_ready": "Codex 준비됨",
   "settings.plugin.ai_chat.agent_provider.api_ready": "Agent API 키 준비됨",
   "settings.plugin.ai_chat.agent_provider.openai_ready": "OpenAI 키 준비됨",
@@ -260,9 +266,9 @@ export const KO_MESSAGES = {
   "settings.plugin.ai_chat.openai.placeholder": "OpenAI API 키 붙여넣기",
   "settings.plugin.ai_chat.openai.save": "키 저장",
   "settings.plugin.ai_chat.openai.clear": "삭제",
-  "settings.plugin.ai_chat.agent_api.provider.label": "에이전트 엔진",
+  "settings.plugin.ai_chat.agent_api.provider.label": "Project OS / Agent API 제공자",
   "settings.plugin.ai_chat.agent_api.provider.description":
-    "채팅과 에이전트 정리를 실행할 엔진을 고르세요.",
+    "Codex CLI, NVIDIA NIM, xAI, DeepSeek, Custom, LM Studio 중 Project OS 이슈 생성과 AI 채팅 에이전트가 사용할 제공자를 고르세요.",
   "settings.plugin.ai_chat.agent_api.cost_title": "외부 API 사용",
   "settings.plugin.ai_chat.agent_api.cost_description":
     "요청은 선택한 제공자에게 직접 전송되며 해당 계정에 과금될 수 있어요.",

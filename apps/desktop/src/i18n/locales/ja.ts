@@ -218,9 +218,16 @@ export const JA_MESSAGES = {
   "settings.plugin.ai_chat.guide.open_chat_label": "チャットを開く:",
   "settings.plugin.ai_chat.guide.open_chat_text":
     "右サイドバーのタブまたはコマンドでパネルを開き、下部入力欄に入力します。",
+  "settings.plugin.ai_chat.chat_connection.title": "通常の AI チャット接続",
+  "settings.plugin.ai_chat.chat_connection.description":
+    "通常チャット用の Momo/Gemini 接続設定です。Project OS の課題作成は上のエージェントプロバイダーを使います。",
+  "settings.plugin.ai_chat.chat_connection.summary":
+    "個人 Gemini キーや通常チャット接続を変更するときに開く",
   "settings.plugin.ai_chat.agent_provider.title": "エージェントプロバイダー",
   "settings.plugin.ai_chat.agent_provider.description":
     "Codex CLI または OpenAI 互換 API でローカルのエージェント操作を実行します。API キーは macOS Keychain に保存されます。",
+  "settings.plugin.ai_chat.agent_provider.project_os_hint":
+    "Project OS Analyze/Sync は下のプロバイダーを使ってプロジェクト課題を作成します。上の接続設定は通常の AI チャット用です。",
   "settings.plugin.ai_chat.agent_provider.codex_ready": "Codex 準備完了",
   "settings.plugin.ai_chat.agent_provider.api_ready": "Agent API キー準備完了",
   "settings.plugin.ai_chat.agent_provider.openai_ready": "OpenAI キー準備完了",
@@ -264,9 +271,9 @@ export const JA_MESSAGES = {
   "settings.plugin.ai_chat.openai.placeholder": "OpenAI API キーを貼り付け",
   "settings.plugin.ai_chat.openai.save": "キーを保存",
   "settings.plugin.ai_chat.openai.clear": "削除",
-  "settings.plugin.ai_chat.agent_api.provider.label": "エージェントエンジン",
+  "settings.plugin.ai_chat.agent_api.provider.label": "Project OS / Agent API プロバイダー",
   "settings.plugin.ai_chat.agent_api.provider.description":
-    "チャットとエージェント計画を実行するエンジンを選びます。",
+    "Project OS の課題作成と AI チャットのエージェント操作に使うプロバイダーを選びます: Codex CLI、NVIDIA NIM、xAI、DeepSeek、Custom、LM Studio。",
   "settings.plugin.ai_chat.agent_api.cost_title": "外部 API の使用",
   "settings.plugin.ai_chat.agent_api.cost_description":
     "リクエストは選択したプロバイダーへ直接送信され、そのアカウントに課金される場合があります。",
