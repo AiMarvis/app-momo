@@ -35,6 +35,9 @@ const ROW_BUTTON_CLASS =
 function ProjectList(props: { projects: readonly WorkProject[] }) {
   const [linkingProjectId, setLinkingProjectId] = createSignal<string | null>(null);
   const [runningProjectId, setRunningProjectId] = createSignal<string | null>(null);
+  const [selectedProjectId, setSelectedProjectId] = createSignal<string | null>(null);
+  const selectedProject = () =>
+    props.projects.find((project) => project.id === selectedProjectId()) ?? null;
 
   async function linkProjectFolder(project: WorkProject): Promise<void> {
     if (linkingProjectId() !== null) return;
@@ -59,99 +62,161 @@ function ProjectList(props: { projects: readonly WorkProject[] }) {
   }
 
   return (
-    <div class="mt-3 min-w-0 overflow-hidden rounded-xs border border-border bg-bg-primary">
-      <DatabaseBar
-        count={props.projects.length}
-        label="Project database"
-        properties="Status / Folder / Sync / Work"
-      />
-      <TableHeader columns="2xl:grid 2xl:grid-cols-[minmax(12rem,1fr)_7rem_minmax(12rem,0.8fr)_minmax(13rem,1fr)_minmax(13rem,1fr)_6rem_5rem]">
-        <span>Project</span>
-        <span>Status</span>
-        <span>Range</span>
-        <span>Folder</span>
-        <span>Sync</span>
-        <span>Work</span>
-        <span>Action</span>
-      </TableHeader>
-      <Show when={props.projects.length > 0} fallback={<EmptyRow label="No projects yet" />}>
-        <For each={props.projects}>
-          {(project) => (
-            <article class="grid min-w-0 gap-2 border-b border-border p-2.5 transition-colors last:border-b-0 hover:bg-ghost-hover 2xl:grid-cols-[minmax(12rem,1fr)_7rem_minmax(12rem,0.8fr)_minmax(13rem,1fr)_minmax(13rem,1fr)_6rem_5rem] 2xl:items-start">
-              <div class="min-w-0 2xl:self-start">
-                <p class="truncate text-sm font-medium text-text-primary">{project.name}</p>
-                <p class="mt-1 truncate text-[0.75rem] text-text-muted">
-                  created {formatDate(project.createdAt)}
-                </p>
-              </div>
-              <ProjectStatusSelect
-                value={project.status}
-                onChange={(status) => updateWorkProjectStatus(project.id, status)}
-              />
-              <div class="grid min-w-0 gap-1">
-                <input
-                  class={SELECT_CLASS}
-                  aria-label={`Project start date for ${project.name}`}
-                  type="date"
-                  value={project.startDate ?? ""}
-                  onInput={(event) =>
-                    updateWorkProjectDates(
-                      project.id,
-                      event.currentTarget.value || null,
-                      project.endDate,
-                    )
-                  }
-                />
-                <input
-                  class={SELECT_CLASS}
-                  aria-label={`Project end date for ${project.name}`}
-                  type="date"
-                  value={project.endDate ?? ""}
-                  onInput={(event) =>
-                    updateWorkProjectDates(
-                      project.id,
-                      project.startDate,
-                      event.currentTarget.value || null,
-                    )
-                  }
-                />
-              </div>
-              <ProjectFolderCell
-                project={project}
-                linking={linkingProjectId() === project.id}
-                onLink={() => void linkProjectFolder(project)}
-              />
-              <ProjectSyncCell
-                project={project}
-                running={runningProjectId() === project.id || project.manualSync.status === "running"}
-                onAnalyze={() => void analyzeProject(project)}
-              />
-              <TableText value={`${activeTaskCountForProject(project.id)} open`} />
-              <button
-                type="button"
-                class="rounded-xs border border-border bg-bg-primary px-2 py-1.5 text-xs text-text-secondary transition-colors hover:bg-ghost-hover hover:text-text-primary"
-                title="Delete project and unlink tasks/issues"
-                onClick={() => deleteWorkProject(project.id)}
-              >
-                Delete
-              </button>
-              <IssueRows issues={issuesForProject(project.id)} />
-            </article>
-          )}
-        </For>
+    <>
+      <div class="mt-3 min-w-0 overflow-hidden rounded-xs border border-border bg-bg-primary">
+        <DatabaseBar
+          count={props.projects.length}
+          label="Project database"
+          properties="Status / Folder / Sync / Issues"
+        />
+        <TableHeader columns="2xl:grid 2xl:grid-cols-[minmax(12rem,1fr)_7rem_minmax(12rem,0.8fr)_minmax(13rem,1fr)_minmax(13rem,1fr)_6rem_5rem]">
+          <span>Project</span>
+          <span>Status</span>
+          <span>Range</span>
+          <span>Folder</span>
+          <span>Sync</span>
+          <span>Issues</span>
+          <span>Action</span>
+        </TableHeader>
+        <Show when={props.projects.length > 0} fallback={<EmptyRow label="No projects yet" />}>
+          <For each={props.projects}>
+            {(project) => {
+              const projectIssues = () => issuesForProject(project.id);
+              return (
+                <article class="grid min-w-0 gap-2 border-b border-border p-2.5 transition-colors last:border-b-0 hover:bg-ghost-hover 2xl:grid-cols-[minmax(12rem,1fr)_7rem_minmax(12rem,0.8fr)_minmax(13rem,1fr)_minmax(13rem,1fr)_6rem_5rem] 2xl:items-start">
+                  <button
+                    type="button"
+                    class="focus:border-border-strong min-w-0 rounded-xs px-1 py-0.5 text-left transition-colors hover:bg-bg-secondary focus:outline-none 2xl:self-start"
+                    aria-label={`Open Project OS issues for ${project.name}`}
+                    onClick={() => setSelectedProjectId(project.id)}
+                  >
+                    <p class="truncate text-sm font-medium text-text-primary">{project.name}</p>
+                    <p class="mt-1 truncate text-[0.75rem] text-text-muted">
+                      created {formatDate(project.createdAt)}
+                    </p>
+                  </button>
+                  <ProjectStatusSelect
+                    value={project.status}
+                    onChange={(status) => updateWorkProjectStatus(project.id, status)}
+                  />
+                  <div class="grid min-w-0 gap-1">
+                    <input
+                      class={SELECT_CLASS}
+                      aria-label={`Project start date for ${project.name}`}
+                      type="date"
+                      value={project.startDate ?? ""}
+                      onInput={(event) =>
+                        updateWorkProjectDates(
+                          project.id,
+                          event.currentTarget.value || null,
+                          project.endDate,
+                        )
+                      }
+                    />
+                    <input
+                      class={SELECT_CLASS}
+                      aria-label={`Project end date for ${project.name}`}
+                      type="date"
+                      value={project.endDate ?? ""}
+                      onInput={(event) =>
+                        updateWorkProjectDates(
+                          project.id,
+                          project.startDate,
+                          event.currentTarget.value || null,
+                        )
+                      }
+                    />
+                  </div>
+                  <ProjectFolderCell
+                    project={project}
+                    linking={linkingProjectId() === project.id}
+                    onLink={() => void linkProjectFolder(project)}
+                  />
+                  <ProjectSyncCell
+                    project={project}
+                    running={
+                      runningProjectId() === project.id || project.manualSync.status === "running"
+                    }
+                    onAnalyze={() => void analyzeProject(project)}
+                  />
+                  <TableText value={`${projectIssues().length} issues`} />
+                  <button
+                    type="button"
+                    class="rounded-xs border border-border bg-bg-primary px-2 py-1.5 text-xs text-text-secondary transition-colors hover:bg-ghost-hover hover:text-text-primary"
+                    title="Delete project and unlink tasks/issues"
+                    onClick={() => deleteWorkProject(project.id)}
+                  >
+                    Delete
+                  </button>
+                </article>
+              );
+            }}
+          </For>
+        </Show>
+      </div>
+      <Show when={selectedProject()}>
+        {(project) => (
+          <ProjectIssueDialog
+            project={project()}
+            issues={issuesForProject(project().id)}
+            onClose={() => setSelectedProjectId(null)}
+          />
+        )}
       </Show>
+    </>
+  );
+}
+
+function ProjectIssueDialog(props: {
+  project: WorkProject;
+  issues: readonly WorkItem[];
+  onClose: () => void;
+}) {
+  const titleId = `project-issues-${props.project.id}`;
+
+  return (
+    <div
+      class="fixed inset-0 z-50 flex items-center justify-center bg-black/55 px-5 py-6"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby={titleId}
+      onClick={props.onClose}
+    >
+      <div
+        class="flex h-full max-h-[min(760px,calc(100vh-3rem))] w-full max-w-5xl flex-col overflow-hidden rounded-xs border border-border bg-bg-primary shadow-2xl"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <header class="flex items-start justify-between gap-4 border-b border-border px-4 py-3">
+          <div class="min-w-0">
+            <h2 id={titleId} class="truncate text-sm font-semibold text-text-primary">
+              {props.project.name}
+            </h2>
+            <p class="text-[0.75rem] text-text-muted">
+              Project issues / {props.issues.length} total / created{" "}
+              {formatDate(props.project.createdAt)}
+            </p>
+          </div>
+          <button type="button" class={ROW_BUTTON_CLASS} onClick={props.onClose}>
+            Close
+          </button>
+        </header>
+        <div class="min-h-0 flex-1 overflow-y-auto p-3">
+          <IssueRows issues={props.issues} />
+        </div>
+      </div>
     </div>
   );
 }
 
-function ProjectFolderCell(props: {
-  project: WorkProject;
-  linking: boolean;
-  onLink: () => void;
-}) {
+function ProjectFolderCell(props: { project: WorkProject; linking: boolean; onLink: () => void }) {
   return (
     <div class="grid min-w-0 gap-1 rounded-xs bg-bg-secondary/70 px-2 py-1">
-      <button type="button" class={ROW_BUTTON_CLASS} disabled={props.linking} onClick={props.onLink}>
+      <button
+        type="button"
+        class={ROW_BUTTON_CLASS}
+        disabled={props.linking}
+        onClick={props.onLink}
+      >
         <FolderIcon size={13} />
         <span>{props.linking ? "Opening..." : "Link Folder"}</span>
       </button>
@@ -170,11 +235,7 @@ function ProjectFolderCell(props: {
   );
 }
 
-function ProjectSyncCell(props: {
-  project: WorkProject;
-  running: boolean;
-  onAnalyze: () => void;
-}) {
+function ProjectSyncCell(props: { project: WorkProject; running: boolean; onAnalyze: () => void }) {
   return (
     <div class="grid min-w-0 gap-1 rounded-xs bg-bg-secondary/70 px-2 py-1">
       <button
@@ -190,7 +251,9 @@ function ProjectSyncCell(props: {
         <input
           type="checkbox"
           checked={props.project.autoSyncEnabled}
-          onChange={(event) => toggleWorkProjectAutoSync(props.project.id, event.currentTarget.checked)}
+          onChange={(event) =>
+            toggleWorkProjectAutoSync(props.project.id, event.currentTarget.checked)
+          }
         />
         <span>Auto Sync</span>
       </label>
@@ -205,22 +268,22 @@ function ProjectReceipt(props: { project: WorkProject }) {
     <Show when={props.project.lastProjectOsRunReceipt}>
       {(receipt) => (
         <div class="min-w-0 border-t border-border pt-1">
-          <p class="break-words text-[0.75rem] text-text-secondary">
+          <p class="text-[0.75rem] break-words text-text-secondary">
             {receipt().status === "applied"
               ? "Latest sync found work that moves this project forward"
               : "Latest sync could not safely apply work that moves this project forward"}
           </p>
-          <p class="break-words text-[0.75rem] text-text-muted">{receipt().summary}</p>
+          <p class="text-[0.75rem] break-words text-text-muted">{receipt().summary}</p>
           <Show when={receipt().git}>
             {(git) => (
               <div class="mt-1 min-w-0">
-                <p class="break-words text-[0.75rem] text-text-secondary">
+                <p class="text-[0.75rem] break-words text-text-secondary">
                   {gitReceiptOwnerLine(git())}
                 </p>
                 <Show when={git().summary}>
-                  <p class="mt-0.5 break-words text-[0.75rem] text-text-muted">{git().summary}</p>
+                  <p class="mt-0.5 text-[0.75rem] break-words text-text-muted">{git().summary}</p>
                 </Show>
-                <details class="mt-1 break-words text-[0.6875rem] text-text-muted">
+                <details class="mt-1 text-[0.6875rem] break-words text-text-muted">
                   <summary class="cursor-pointer text-text-secondary">Git receipt details</summary>
                   <dl class="mt-1 grid gap-1 font-mono">
                     <div>
@@ -259,7 +322,7 @@ function ProjectReceipt(props: { project: WorkProject }) {
 
 function IssueRows(props: { issues: readonly WorkItem[] }) {
   return (
-    <div class="min-w-0 2xl:col-span-7">
+    <div class="min-w-0">
       <Show
         when={props.issues.length > 0}
         fallback={<p class="text-[0.75rem] text-text-muted">No linked issues</p>}
@@ -289,7 +352,7 @@ function IssueRows(props: { issues: readonly WorkItem[] }) {
 function IssueCopy(props: { issue: WorkItem }) {
   return (
     <div class="min-w-0">
-      <p class="break-words text-[0.75rem] font-medium leading-snug text-text-primary">
+      <p class="text-[0.75rem] leading-snug font-medium break-words text-text-primary">
         {props.issue.title}
       </p>
       <Show when={props.issue.userOutcome}>
@@ -302,8 +365,12 @@ function IssueCopy(props: { issue: WorkItem }) {
         <p class="mt-1 text-[0.6875rem] text-text-muted">{issueReasonLine(props.issue)}</p>
       </Show>
       <details class="mt-1 text-[0.6875rem] text-text-muted">
-        <summary class="cursor-pointer text-text-secondary">Technical details and source evidence</summary>
-        <p class="mt-1 whitespace-pre-wrap">{props.issue.technicalDetails || "No technical details recorded."}</p>
+        <summary class="cursor-pointer text-text-secondary">
+          Technical details and source evidence
+        </summary>
+        <p class="mt-1 whitespace-pre-wrap">
+          {props.issue.technicalDetails || "No technical details recorded."}
+        </p>
         <Show when={props.issue.sourceEvidence.length > 0}>
           <ul class="mt-1 list-inside list-disc font-mono">
             <For each={props.issue.sourceEvidence}>{(path) => <li>{path}</li>}</For>
@@ -312,11 +379,6 @@ function IssueCopy(props: { issue: WorkItem }) {
       </details>
     </div>
   );
-}
-
-function activeTaskCountForProject(projectId: string): number {
-  return workOsState.tasks.filter((task) => task.projectId === projectId && task.status !== "done")
-    .length;
 }
 
 function issuesForProject(projectId: string): WorkItem[] {

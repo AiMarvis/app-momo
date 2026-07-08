@@ -99,7 +99,8 @@ function projectAnalysisResponse(
           projectId,
           title,
           summary: "The linked project evidence points to a concrete owner decision.",
-          userOutcome: "Project owners can decide the next user-facing action without reading raw files.",
+          userOutcome:
+            "Project owners can decide the next user-facing action without reading raw files.",
           nextAction: "Assign the owner and write the first checkpoint for the project team.",
           status: "todo",
           statusReason: "The next coordination step is visible from the bounded evidence.",
@@ -122,7 +123,11 @@ function projectIdFromRequestArgs(args: unknown): string {
 
 function projectScan(files: readonly { readonly path: string; readonly snippet: string }[]): {
   readonly rootName: string;
-  readonly files: readonly { readonly path: string; readonly size: number; readonly snippet: string }[];
+  readonly files: readonly {
+    readonly path: string;
+    readonly size: number;
+    readonly snippet: string;
+  }[];
   readonly skipped: readonly string[];
   readonly limits: {
     readonly maxFiles: number;
@@ -158,7 +163,10 @@ function notGitSummary(): Record<string, unknown> {
   };
 }
 
-function readyGitSummary(path: string, previousCommit: string | null = null): Record<string, unknown> {
+function readyGitSummary(
+  path: string,
+  previousCommit: string | null = null,
+): Record<string, unknown> {
   return {
     status: "ready",
     head: "abcdef1234567890abcdef1234567890abcdef12",
@@ -316,7 +324,7 @@ describe("Momo dashboard shell", () => {
     expect(html).toContain("Projects");
     expect(html).toContain("Project issues");
     expect(html).toContain("Project database");
-    expect(html).toContain("Status / Folder / Sync / Work");
+    expect(html).toContain("Status / Folder / Sync / Issues");
     expect(html).toContain("Status");
     expect(html).toContain("Project start date");
     expect(html).toContain("Project end date");
@@ -421,20 +429,21 @@ describe("Momo dashboard shell", () => {
     expect(html).toContain("Review calendar grouping");
     expect(html).toContain("2026-07-05");
     expect(html).toContain("2026-07-07");
-    expect(html).toContain("high");
-    expect(html).toContain("doing");
+    expect(html).toContain("In progress");
+    expect(html).toContain("Open issues");
     expect(html).toContain("ranges");
     expect(html).toContain("done");
-    expect(html).toContain("1 open");
-    expect(html).toContain("Confirm project range");
-    expect(html).toContain("The team knows who owns the project range before review.");
-    expect(html).toContain("Pick the owner during the next project check-in.");
-    expect(html).toContain("Launch planning needs one visible owner.");
-    expect(html).toContain("The issue is waiting for the project check-in.");
-    expect(html).toContain("The range decision affects near-term planning.");
-    expect(html).toContain("Technical details and source evidence");
-    expect(html).toContain("Generated from project files only.");
-    expect(html).toContain("docs/project-range.md");
+    expect(html).toContain("2 issues");
+    expect(html).toContain("Open Project OS issues for Momo desktop");
+    expect(html).not.toContain("Confirm project range");
+    expect(html).not.toContain("The team knows who owns the project range before review.");
+    expect(html).not.toContain("Pick the owner during the next project check-in.");
+    expect(html).not.toContain("Launch planning needs one visible owner.");
+    expect(html).not.toContain("The issue is waiting for the project check-in.");
+    expect(html).not.toContain("The range decision affects near-term planning.");
+    expect(html).not.toContain("Technical details and source evidence");
+    expect(html).not.toContain("Generated from project files only.");
+    expect(html).not.toContain("docs/project-range.md");
     expect(html).toContain("momo-desktop");
     expect(html).toContain("/Users/momo/projects/momo-desktop");
     expect(html).toContain("Link Folder");
@@ -442,7 +451,7 @@ describe("Momo dashboard shell", () => {
     expect(html).toContain("Auto Sync");
     expect(html).toContain("Latest sync found work that moves this project forward");
     expect(html).toContain("Found work that moves this project forward.");
-    expect(html).toContain("Unlinked blocker");
+    expect(html).not.toContain("Unlinked blocker");
     expect(dailyHtml).toContain("Review calendar grouping");
     expect(dailyHtml).toContain("Delete");
     expect(dailyHtml).not.toContain("Try sidebar sticky ideas");
@@ -516,7 +525,8 @@ describe("Momo dashboard shell", () => {
       priority: "medium",
       priorityReason: "첫 설정 성공률은 릴리스 품질에 직접 연결됩니다.",
       sourceEvidence: ["src/onboarding/checklist.tsx"],
-      technicalDetails: "Git diff evidence: src/onboarding/checklist.tsx changed in abcdef1234567890",
+      technicalDetails:
+        "Git diff evidence: src/onboarding/checklist.tsx changed in abcdef1234567890",
     });
     store.recordProjectOsRunReceipt(project.id, {
       runId: "project-os-run-git",
@@ -559,10 +569,12 @@ describe("Momo dashboard shell", () => {
     expect(html).toContain("123456a..abcdef1");
     expect(html).toContain("docs/payment-recovery.md");
     expect(html).toContain("src/onboarding/checklist.tsx");
-    expect(html).toContain("사용자가 새 버전을 안전하게 업데이트할 수 있게 하기");
-    expect(html).toContain("결제 실패 후 사용자가 다시 진행할 방법 보여주기");
-    expect(html).toContain("첫 설정 단계에서 다음 행동을 분명하게 보여주기");
-    expect(html).toContain("Technical details and source evidence");
+    expect(html).toContain("3 issues");
+    expect(html).toContain("Open Project OS issues for Git-aware Project OS");
+    expect(html).not.toContain("사용자가 새 버전을 안전하게 업데이트할 수 있게 하기");
+    expect(html).not.toContain("결제 실패 후 사용자가 다시 진행할 방법 보여주기");
+    expect(html).not.toContain("첫 설정 단계에서 다음 행동을 분명하게 보여주기");
+    expect(html).not.toContain("Technical details and source evidence");
   });
 
   it("does not render secret-looking paths restored from Project OS Git receipts", async () => {
@@ -822,8 +834,8 @@ describe("Momo dashboard shell", () => {
     expect(chatRequestPayloads[1]).toContain("docs/release-plan.md");
     expect(chatRequestPayloads[1]).toContain("existingProjectOsIssues");
     expect(
-      store.workOsState.projects.find((item) => item.id === releaseProject.id)?.lastProjectOsRunReceipt
-        ?.git,
+      store.workOsState.projects.find((item) => item.id === releaseProject.id)
+        ?.lastProjectOsRunReceipt?.git,
     ).toMatchObject({
       status: "summarized",
       changedPaths: ["docs/release-plan.md"],
