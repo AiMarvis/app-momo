@@ -55,9 +55,12 @@ type ProjectAnalysisLastRunReceipt = {
   readonly git?: unknown | null;
 };
 
+type ProjectIssueOutputLanguage = "en" | "ja" | "ko";
+
 type ProjectAnalysisPromptInput = {
   readonly projectId: string;
   readonly projectName: string;
+  readonly issueLanguage: ProjectIssueOutputLanguage;
   readonly manifest: ProjectOsManifest;
   readonly gitSummary: ProjectGitSummary;
   readonly existingIssues: readonly string[];
@@ -66,16 +69,30 @@ type ProjectAnalysisPromptInput = {
 };
 
 function buildProjectAnalysisPrompt(input: ProjectAnalysisPromptInput): string {
+  const language = projectIssueLanguage(input.issueLanguage);
   const payload = {
     project: {
       id: input.projectId,
       name: input.projectName,
       generatedAt: input.nowIso,
     },
+    issueLanguage: {
+      code: input.issueLanguage,
+      label: language.label,
+      rule: language.rule,
+    },
     manifest: input.manifest,
     gitChangeSummary: input.gitSummary,
     existingProjectOsIssues: input.existingIssues,
     lastRunReceipt: input.lastRunReceipt,
+    evidenceCoverage: {
+      boundedEvidenceRule:
+        "Use only this bounded manifest and Git metadata summary. Do not ask the model to inspect files or Git directly.",
+      gitMetadataRule:
+        "Use Git metadata as the primary signal: status lines, changed paths, diff stats, and recent commit subjects. Do not infer detailed implementation behavior from source code.",
+      distinctWorkRule:
+        "Create or update only the few clearest owner-facing work items. Prefer one concise issue when the metadata points to one project move.",
+    },
     outputContract: {
       kind: "project_analysis",
       topLevelRequiredFields: ["kind", "projectId", "summary", "creates", "updates"],
@@ -96,8 +113,15 @@ function buildProjectAnalysisPrompt(input: ProjectAnalysisPromptInput): string {
       placeholderRule: "Replace outputShape placeholder strings with evidence-specific values.",
       emptyResultRule:
         "If no safe project issue should be created or updated, return creates: [] and updates: [] with a short summary.",
-      titleRule: "Use one owner-readable sentence. Keep filenames, functions, and commit hashes out of titles.",
-      scopeRule: "Use only the linked project evidence in this payload and return Project OS issue operations only.",
+      languageRule: language.rule,
+      titleRule:
+        "Use one short non-developer title. Keep filenames, functions, and commit hashes out of titles.",
+      conciseCopyRule:
+        "Keep every user-facing field very short: title under 70 characters, summary and nextAction one sentence each, technicalDetails under 180 characters.",
+      scopeRule:
+        "Use only the linked project evidence in this payload and return Project OS issue operations only.",
+      createCountRule:
+        "The outputShape shows one create as the default. Return more only when Git metadata clearly shows separate owner-facing work.",
       outputShape: {
         kind: "project_analysis",
         projectId: input.projectId,
@@ -107,15 +131,15 @@ function buildProjectAnalysisPrompt(input: ProjectAnalysisPromptInput): string {
             kind: "project_issue",
             projectId: input.projectId,
             title: "Owner-readable project issue title",
-            summary: "Why this issue matters for the project.",
-            userOutcome: "The user-visible outcome this work enables.",
-            nextAction: "The next concrete action a project owner can take.",
+            summary: "Plain-language gist of the work.",
+            userOutcome: "The user-visible outcome this work likely enables.",
+            nextAction: "The next simple action a project owner can take.",
             status: "todo",
             statusReason: "Why this status fits the evidence.",
             priority: "medium",
             priorityReason: "Why this priority fits the evidence.",
             sourceEvidence: ["relative/path/from/provided/evidence"],
-            technicalDetails: "Brief implementation context grounded in the evidence.",
+            technicalDetails: "Brief metadata-based context grounded in the evidence.",
           },
         ],
         updates: [
@@ -138,7 +162,10 @@ function buildProjectAnalysisPrompt(input: ProjectAnalysisPromptInput): string {
   return [
     "You are Project OS analysis. Return only a JSON ProjectAnalysisPlan.",
     "Top-level JSON object must include kind, projectId, summary, creates, and updates.",
-    "Group technical evidence by user value so project owners can decide the next action.",
+    language.rule,
+    "JSON property names, status enum values, priority enum values, projectId, issueId, and sourceEvidence paths must stay unchanged and must not be translated.",
+    "Use Git metadata as the primary signal and explain the likely project work in plain non-developer language.",
+    "Keep titles and issue text very short. Prefer one concise issue unless metadata clearly shows separate work.",
     "Reject unsafe paths, outside-folder evidence, Git write intent, and developer-only issue titles.",
     JSON.stringify(payload, null, 2),
   ].join("\n");
@@ -159,12 +186,36 @@ function parseProjectAnalysisPlanJson(
   }
 }
 
+function projectIssueLanguage(language: ProjectIssueOutputLanguage): {
+  readonly label: string;
+  readonly rule: string;
+} {
+  switch (language) {
+    case "ko":
+      return {
+        label: "Korean (한국어)",
+        rule: "Write all user-facing ProjectAnalysisPlan strings in Korean (한국어): summary, creates[].title, creates[].summary, creates[].userOutcome, creates[].nextAction, creates[].statusReason, creates[].priorityReason, creates[].technicalDetails, and any update text fields.",
+      };
+    case "ja":
+      return {
+        label: "Japanese (日本語)",
+        rule: "Write all user-facing ProjectAnalysisPlan strings in Japanese (日本語): summary, creates[].title, creates[].summary, creates[].userOutcome, creates[].nextAction, creates[].statusReason, creates[].priorityReason, creates[].technicalDetails, and any update text fields.",
+      };
+    case "en":
+      return {
+        label: "English",
+        rule: "Write all user-facing ProjectAnalysisPlan strings in English: summary, creates[].title, creates[].summary, creates[].userOutcome, creates[].nextAction, creates[].statusReason, creates[].priorityReason, creates[].technicalDetails, and any update text fields.",
+      };
+  }
+}
+
 export { buildProjectAnalysisPrompt, parseProjectAnalysisPlanJson, validateProjectAnalysisPlan };
 export type {
   ProjectAnalysisLastRunReceipt,
   ProjectAnalysisPlan,
   ProjectAnalysisPlanValidationResult,
   ProjectAnalysisPromptInput,
+  ProjectIssueOutputLanguage,
   ProjectIssueCreate,
   ProjectIssuePriority,
   ProjectIssueStatus,

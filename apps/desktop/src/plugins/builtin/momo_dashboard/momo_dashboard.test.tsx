@@ -891,6 +891,90 @@ describe("Momo dashboard shell", () => {
     );
   });
 
+  it("passes Project Issue language and concise Git metadata rules to the Project OS LLM", async () => {
+    localStorage.setItem("settings-cache", JSON.stringify({ projectIssueLanguage: "ko" }));
+    const previousHead = "1111111111111111111111111111111111111111";
+    const invokeMock = vi.fn(async (command: string, args?: unknown) => {
+      if (command === "project_os_scan_folder") {
+        return projectScan([
+          {
+            path: "ios/ReleaseChecklist.swift",
+            snippet: "TestFlight readiness checklist and beta owner notes.",
+          },
+          {
+            path: "workers/horoscope.ts",
+            snippet: "Daily horoscope and compatibility worker release notes.",
+          },
+        ]);
+      }
+      if (command === "project_os_git_summary") {
+        return {
+          ...readyGitSummary("ios/ReleaseChecklist.swift"),
+          changedPaths: ["ios/ReleaseChecklist.swift", "workers/horoscope.ts"],
+          diffNameStatus: ["M\tios/ReleaseChecklist.swift", "M\tworkers/horoscope.ts"],
+          diffStat: ["ios/ReleaseChecklist.swift | 6 ++++--", "workers/horoscope.ts | 8 +++++---"],
+          logOneline: ["abcdef1 TestFlight와 운세 릴리즈 준비"],
+        };
+      }
+      if (command === "plugin_get_settings_with_secrets") return aiChatSettings("nvidia");
+      if (command === "agent_get_agent_api_key_status") return { configured: true };
+      if (command === "agent_run_openai_compatible_chat") {
+        return projectAnalysisResponse(
+          projectIdFromRequestArgs(args),
+          "TestFlight 제출 전 릴리즈 준비 상태 확정",
+          "ios/ReleaseChecklist.swift",
+        );
+      }
+      throw new Error(`Unexpected invoke command: ${command}; args=${JSON.stringify(args)}`);
+    });
+    vi.doMock("@tauri-apps/api/core", () => ({ invoke: invokeMock }));
+    const store = await import("./work_os_store");
+    const { runProjectOsAnalysis } = await import("./project_os_analysis_runner");
+    const project = store.createWorkProject({ name: "별멍" });
+    store.linkWorkProjectFolder(project.id, { path: "/tmp/byeolmung", name: "byeolmung" });
+    store.recordProjectOsRunReceipt(project.id, {
+      runId: "previous-run",
+      status: "applied",
+      summary: "Previous Project OS analysis.",
+      createdIssueIds: [],
+      updatedIssueIds: [],
+      finishedAt: "2026-07-07T00:00:00.000Z",
+      git: {
+        status: "summarized",
+        headCommit: previousHead,
+        previousCommit: "",
+        range: "HEAD",
+        summary: "Previous Git receipt.",
+        changedPaths: ["ios/ReleaseChecklist.swift"],
+        error: "",
+      },
+    });
+    const linkedProject = store.workOsState.projects.find((item) => item.id === project.id);
+    if (linkedProject === undefined) throw new Error("Expected linked project.");
+
+    const result = await runProjectOsAnalysis(linkedProject);
+
+    expect(result.kind).toBe("applied");
+    expect(
+      invokeMock.mock.calls
+        .filter(([command]) => command === "project_os_git_summary")
+        .map(([, args]) => args),
+    ).toEqual([expect.objectContaining({ previousCommit: null })]);
+    const chatArgs = invokeMock.mock.calls.find(
+      ([command]) => command === "agent_run_openai_compatible_chat",
+    )?.[1] as { readonly request?: { readonly content?: string } } | undefined;
+    const chatRequest = chatArgs?.request?.content ?? "";
+    expect(chatRequest).toContain('"code": "ko"');
+    expect(chatRequest).toContain("Korean (한국어)");
+    expect(chatRequest).toContain("Use Git metadata as the primary signal");
+    expect(chatRequest).toContain("Keep titles and issue text very short");
+    expect(chatRequest).toContain("ios/ReleaseChecklist.swift");
+    expect(chatRequest).toContain("workers/horoscope.ts");
+    expect(store.workOsState.issues.map((issue) => issue.title)).toContain(
+      "TestFlight 제출 전 릴리즈 준비 상태 확정",
+    );
+  });
+
   it("does not create Project OS issues when the selected provider is unavailable", async () => {
     const invokeMock = vi.fn(async (command: string, args?: unknown) => {
       if (command === "project_os_scan_folder") {
@@ -998,7 +1082,7 @@ describe("Momo dashboard shell", () => {
     );
   });
 
-  it("keeps the last successful Git commit after a failed Git summary", async () => {
+  it("reads current bounded Git metadata instead of previous receipt deltas", async () => {
     const lastGoodHead = "1111111111111111111111111111111111111111";
     const nextHead = "2222222222222222222222222222222222222222";
     let gitSummaryReads = 0;
@@ -1017,9 +1101,8 @@ describe("Momo dashboard shell", () => {
           throw new Error(`git unavailable for ${JSON.stringify(args)}`);
         }
         return {
-          ...readyGitSummary("docs/release-plan.md", lastGoodHead),
+          ...readyGitSummary("docs/release-plan.md"),
           head: nextHead,
-          range: `${lastGoodHead}..HEAD`,
         };
       }
       if (command === "plugin_get_settings_with_secrets") return aiChatSettings("nvidia");
@@ -1069,14 +1152,14 @@ describe("Momo dashboard shell", () => {
       ([command]) => command === "project_os_git_summary",
     );
     expect(gitSummaryCalls.map(([, args]) => args)).toEqual([
-      expect.objectContaining({ previousCommit: lastGoodHead }),
-      expect.objectContaining({ previousCommit: lastGoodHead }),
+      expect.objectContaining({ previousCommit: null }),
+      expect.objectContaining({ previousCommit: null }),
     ]);
     expect(store.workOsState.projects[0]?.lastProjectOsRunReceipt?.git).toMatchObject({
       status: "summarized",
       headCommit: nextHead,
-      previousCommit: lastGoodHead,
-      range: `${lastGoodHead}..HEAD`,
+      previousCommit: "",
+      range: "HEAD",
     });
   });
 

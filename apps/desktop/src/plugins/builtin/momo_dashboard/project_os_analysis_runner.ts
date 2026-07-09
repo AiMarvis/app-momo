@@ -1,6 +1,7 @@
 // @allow SIZE_OK - Project OS runner owns provider routing, issue application, and run receipts.
 import { invoke } from "@tauri-apps/api/core";
 
+import { resolveLocale } from "~/i18n";
 import { scanProjectOsFolder } from "~/lib/project_os_fs";
 import {
   buildProjectAnalysisPrompt,
@@ -11,9 +12,9 @@ import {
   type ProjectIssueOperation,
 } from "~/lib/momo/project_analysis_runtime";
 import { loadPluginSettings } from "~/plugins/settings_store";
+import { settingsState } from "~/stores/settings";
 
 import {
-  previousProjectGitCommit,
   projectGitReceiptFromSummary,
   readProjectGitSummaryForAnalysis,
 } from "./project_os_git_analysis";
@@ -105,14 +106,14 @@ async function runProjectOsAnalysis(project: WorkProject): Promise<ProjectOsAnal
 
   try {
     const manifest = await scanProjectOsFolder(project.linkedFolder.path);
-    const previousCommit = previousProjectGitCommit(project.lastProjectOsRunReceipt);
-    const gitSummary = await readProjectGitSummaryForAnalysis(project.linkedFolder.path, previousCommit);
+    const gitSummary = await readProjectGitSummaryForAnalysis(project.linkedFolder.path, null);
     const gitReceipt = projectGitReceiptFromSummary(gitSummary);
     const generatedAt = new Date().toISOString();
     const existingIssues = existingIssueLines(project.id);
     const agentPrompt = buildProjectAnalysisPrompt({
       projectId: project.id,
       projectName: project.name,
+      issueLanguage: resolveLocale(settingsState.general.projectIssueLanguage),
       manifest,
       gitSummary,
       existingIssues,
@@ -132,7 +133,8 @@ async function runProjectOsAnalysis(project: WorkProject): Promise<ProjectOsAnal
 
     const runtime = projectAnalysisPlanToOperations(validation.plan, generatedAt);
     const applied = applyProjectOsOperations(project.id, runtime.operations);
-    if (applied.kind === "failed") return failProjectOsRun(project.id, startedAt, applied.error, gitReceipt);
+    if (applied.kind === "failed")
+      return failProjectOsRun(project.id, startedAt, applied.error, gitReceipt);
 
     const receipt = finishProjectOsRun({
       projectId: project.id,

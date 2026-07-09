@@ -62,6 +62,7 @@ describe("ProjectAnalysisPlan boundary", () => {
     const prompt = buildProjectAnalysisPrompt({
       projectId: PROJECT_ID,
       projectName: "Momo Desktop",
+      issueLanguage: "en",
       nowIso: "2026-07-07T00:00:00.000Z",
       manifest: {
         rootName: "momo",
@@ -110,11 +111,51 @@ describe("ProjectAnalysisPlan boundary", () => {
     expect(prompt).toContain("Confirm who owns launch review");
     expect(prompt).toContain('"lastRunReceipt"');
     expect(prompt).toContain("Found 1 project-moving task from the linked folder.");
-    expect(prompt).toContain("Top-level JSON object must include kind, projectId, summary, creates, and updates.");
+    expect(prompt).toContain(
+      "Top-level JSON object must include kind, projectId, summary, creates, and updates.",
+    );
     expect(prompt).toContain('"topLevelRequiredFields"');
     expect(prompt).toContain('"creates": [');
     expect(prompt).toContain('"updates": [');
     expect(prompt).not.toContain("Organize Inbox");
+  });
+
+  it("adds the selected Project Issue language and concise Git metadata rules to the prompt", () => {
+    const prompt = buildProjectAnalysisPrompt({
+      projectId: PROJECT_ID,
+      projectName: "Momo Desktop",
+      issueLanguage: "ko",
+      nowIso: "2026-07-07T00:00:00.000Z",
+      manifest: {
+        rootName: "momo",
+        files: [{ path: "src/release.ts", size: 33, snippet: "export const ready = true;" }],
+        skipped: [],
+        limits: { maxFiles: 200, maxBytes: 524288, bytesRead: 33, truncated: false },
+      },
+      gitSummary: {
+        status: "ready",
+        head: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        previousCommit: null,
+        range: "HEAD",
+        changedPaths: ["src/release.ts", "docs/release.md"],
+        statusShort: [],
+        diffNameStatus: [],
+        diffStat: [],
+        logOneline: ["aaaaaaaa release checklist"],
+        message: null,
+      },
+      existingIssues: ["No existing Project OS issues."],
+      lastRunReceipt: null,
+    });
+
+    expect(prompt).toContain('"issueLanguage"');
+    expect(prompt).toContain('"code": "ko"');
+    expect(prompt).toContain("Korean (한국어)");
+    expect(prompt).toContain("Write all user-facing ProjectAnalysisPlan strings in Korean");
+    expect(prompt).toContain("sourceEvidence paths must stay unchanged");
+    expect(prompt).toContain("Use Git metadata as the primary signal");
+    expect(prompt).toContain("Keep every user-facing field very short");
+    expect(prompt).toContain("Prefer one concise issue");
   });
 
   it("rejects empty required user-facing issue fields", () => {
@@ -163,7 +204,6 @@ describe("ProjectAnalysisPlan boundary", () => {
       ],
     });
   });
-
 });
 
 function validPlan(): ProjectAnalysisPlan {
