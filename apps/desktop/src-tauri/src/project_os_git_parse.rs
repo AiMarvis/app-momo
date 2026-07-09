@@ -9,8 +9,11 @@ pub(super) fn parse_status_short(output: &str) -> Result<(Vec<String>, Vec<Strin
         if line.len() < 4 {
             return Err(());
         }
+        let Ok(paths_for_line) = parse_status_short_paths(line[3..].trim()) else {
+            continue;
+        };
         lines.push(line.to_string());
-        for path in parse_status_short_paths(line[3..].trim())? {
+        for path in paths_for_line {
             push_unique(&mut paths, path);
         }
     }
@@ -29,13 +32,22 @@ pub(super) fn parse_name_status(output: &str) -> Result<(Vec<String>, Vec<String
             return Err(());
         }
         let mut found_path = false;
+        let mut safe_paths = Vec::new();
         for path in parts {
             found_path = true;
-            git_relative_path_is_safe(path)?;
-            push_unique(&mut paths, path.to_string());
+            if git_relative_path_is_safe(path).is_err() {
+                continue;
+            }
+            safe_paths.push(path.to_string());
         }
         if !found_path {
             return Err(());
+        }
+        if safe_paths.len() != line.split('\t').count() - 1 {
+            continue;
+        }
+        for path in safe_paths {
+            push_unique(&mut paths, path);
         }
         lines.push(line.to_string());
     }
@@ -46,7 +58,9 @@ pub(super) fn parse_diff_stat(output: &str) -> Result<Vec<String>, ()> {
     let mut lines = Vec::new();
     for line in output.lines().filter(|line| !line.trim().is_empty()) {
         if let Some((path, _)) = line.split_once(" | ") {
-            git_diff_stat_path_is_safe(path.trim())?;
+            if git_diff_stat_path_is_safe(path.trim()).is_err() {
+                continue;
+            }
         } else if !line.contains("changed") {
             return Err(());
         }

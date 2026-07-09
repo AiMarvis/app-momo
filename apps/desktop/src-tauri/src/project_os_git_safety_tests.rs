@@ -3,7 +3,7 @@ use std::path::Path;
 
 use super::parse::{git_diff_stat_path_is_safe, git_relative_path_is_safe};
 use super::test_support::{
-    TempProjectRoot, git_output, git_status_output, git_summary_with_outputs,
+    TempProjectRoot, git_command_output, git_output, git_status_output, git_summary_with_outputs,
 };
 use super::{
     ProjectGitDateRange, ProjectOsGitSummaryStatus, commit_numstat_args, date_log_args, diff_args,
@@ -12,7 +12,7 @@ use super::{
 use crate::project_os::SECOND_BRAIN_ROOT_NAMES;
 
 #[test]
-fn git_summary_rejects_unsafe_or_second_brain_paths_from_git_output() {
+fn git_summary_omits_unsafe_or_second_brain_paths_from_git_output() {
     let root = TempProjectRoot::git("unsafe-output");
     let head = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
     let root_text = root.text();
@@ -23,19 +23,26 @@ fn git_summary_rejects_unsafe_or_second_brain_paths_from_git_output() {
         vec![
             git_output(&["rev-parse", "--show-toplevel"], &root_text),
             git_output(&["rev-parse", "HEAD"], head),
-            git_status_output("?? Inbox/private.md\n"),
+            git_status_output("?? Inbox/private.md\n M src/main.rs\n"),
+            git_command_output(
+                diff_args("--name-status", None),
+                "M\tsrc/main.rs\nM\tKnowledge/private.md\n",
+            ),
+            git_command_output(
+                diff_args("--stat", None),
+                "src/main.rs | 1 +\nKnowledge/private.md | 1 +\n 2 files changed, 2 insertions(+)\n",
+            ),
+            git_command_output(log_args(None), "bbbbbbb safe work\n"),
         ],
     );
 
-    assert_eq!(summary.status, ProjectOsGitSummaryStatus::Failed);
-    assert!(summary.changed_paths.is_empty());
-    assert!(
-        !summary
-            .message
-            .as_deref()
-            .unwrap_or_default()
-            .contains("Inbox"),
-        "safe failure must not leak rejected Git paths: {summary:?}"
+    assert_eq!(summary.status, ProjectOsGitSummaryStatus::Ready);
+    assert_eq!(summary.changed_paths, vec!["src/main.rs"]);
+    assert_eq!(summary.status_short, vec![" M src/main.rs"]);
+    assert_eq!(summary.diff_name_status, vec!["M\tsrc/main.rs"]);
+    assert_eq!(
+        summary.diff_stat,
+        vec!["src/main.rs | 1 +", " 2 files changed, 2 insertions(+)"]
     );
 
     for path in [

@@ -202,7 +202,7 @@ fn git_summary_reads_schedule_date_range_commit_metadata_by_day() {
 }
 
 #[test]
-fn git_summary_rejects_unsafe_schedule_commit_paths() {
+fn git_summary_omits_unsafe_schedule_commit_paths() {
     let root = TempProjectRoot::git("unsafe-commit-path");
     let head = "ffffffffffffffffffffffffffffffffffffffff";
     let root_text = root.text();
@@ -230,10 +230,15 @@ fn git_summary_rejects_unsafe_schedule_commit_paths() {
                     "{full_hash}\x1fbbbbbbb\x1fMomo\x1f2026-07-01T10:30:00+09:00\x1funsafe path\n"
                 ),
             ),
-            git_command_output(commit_numstat_args(full_hash), "1\t0\tKnowledge/raw.md\n"),
+            git_command_output(
+                commit_numstat_args(full_hash),
+                "1\t0\tKnowledge/raw.md\n2\t1\tdocs/release.md\n",
+            ),
         ],
     );
 
-    assert_eq!(summary.status, ProjectOsGitSummaryStatus::Failed);
-    assert!(summary.commits_by_date.is_empty());
+    assert_eq!(summary.status, ProjectOsGitSummaryStatus::Ready);
+    let commit = &summary.commits_by_date[0].commits[0];
+    assert_eq!(commit.changed_paths, vec!["docs/release.md"]);
+    assert_eq!(commit.diff_stat[0].path, "docs/release.md");
 }

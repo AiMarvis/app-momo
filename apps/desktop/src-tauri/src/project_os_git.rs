@@ -466,7 +466,9 @@ fn parse_numstat(output: &str) -> Result<(Vec<ProjectOsGitFileStat>, Vec<String>
         if parts.next().is_some() {
             return Err(());
         }
-        git_diff_stat_path_is_safe(path)?;
+        if git_diff_stat_path_is_safe(path).is_err() {
+            continue;
+        }
         push_unique(&mut changed_paths, path.to_string());
         diff_stat.push(ProjectOsGitFileStat {
             path: path.to_string(),
