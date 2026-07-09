@@ -115,6 +115,43 @@ function projectAnalysisResponse(
   };
 }
 
+function koreanProjectAnalysisResponse(
+  projectId: string,
+  title: string,
+  sourceEvidence: string,
+  status: "doing" | "done" | "todo" = "todo",
+): { readonly content: string } {
+  return {
+    content: JSON.stringify({
+      kind: "project_analysis",
+      projectId,
+      summary: "프로젝트 진행에 필요한 일이 확인되었습니다.",
+      creates: [
+        {
+          kind: "project_issue",
+          projectId,
+          title,
+          summary: "연결된 프로젝트 기록에서 다음 확인이 필요합니다.",
+          userOutcome: "팀이 다음 행동을 짧게 이해할 수 있습니다.",
+          nextAction: "다음 점검 전에 담당자와 확인 기준을 정합니다.",
+          status,
+          statusReason:
+            status === "done"
+              ? "Git 기록상 이미 완료된 흐름입니다."
+              : status === "doing"
+                ? "일부 작업이 진행 중인 증거가 있습니다."
+                : "아직 확인해야 할 일이 남아 있습니다.",
+          priority: "high",
+          priorityReason: "다음 프로젝트 점검에 바로 영향을 줍니다.",
+          sourceEvidence: [sourceEvidence],
+          technicalDetails: "앱이 수집한 Git 메타데이터만 근거로 사용했습니다.",
+        },
+      ],
+      updates: [],
+    }),
+  };
+}
+
 function projectIdFromRequestArgs(args: unknown): string {
   const match = /project-[a-z0-9-]+/i.exec(JSON.stringify(args));
   if (match) return match[0];
@@ -159,6 +196,8 @@ function notGitSummary(): Record<string, unknown> {
     diffNameStatus: [],
     diffStat: [],
     logOneline: [],
+    commitsByDate: [],
+    workingTree: { stagedPaths: [], unstagedPaths: [], untrackedPaths: [] },
     message: "Folder is not a Git repository root.",
   };
 }
@@ -166,17 +205,38 @@ function notGitSummary(): Record<string, unknown> {
 function readyGitSummary(
   path: string,
   previousCommit: string | null = null,
+  range = previousCommit ? `${previousCommit}..HEAD` : "HEAD",
 ): Record<string, unknown> {
   return {
     status: "ready",
     head: "abcdef1234567890abcdef1234567890abcdef12",
     previousCommit,
-    range: previousCommit ? `${previousCommit}..HEAD` : "HEAD",
+    range,
     changedPaths: [path],
     statusShort: [` M ${path}`],
     diffNameStatus: [`M\t${path}`],
     diffStat: [`${path} | 4 ++++`],
     logOneline: ["abcdef1 prepare release readiness"],
+    commitsByDate: [
+      {
+        date: "2026-07-06",
+        commits: [
+          {
+            shortHash: "abcdef1",
+            subject: "prepare release readiness",
+            author: "Momo",
+            authorDate: "2026-07-06T10:30:00+09:00",
+            changedPaths: [path],
+            diffStat: [{ path, additions: 4, deletions: 0 }],
+          },
+        ],
+      },
+    ],
+    workingTree: {
+      stagedPaths: [],
+      unstagedPaths: [path],
+      untrackedPaths: [],
+    },
     message: null,
   };
 }
@@ -324,7 +384,7 @@ describe("Momo dashboard shell", () => {
     expect(html).toContain("Projects");
     expect(html).toContain("Project issues");
     expect(html).toContain("Project database");
-    expect(html).toContain("Status / Folder / Sync / Issues");
+    expect(html).toContain("Status / Period / Folder / Sync / Issues");
     expect(html).toContain("Status");
     expect(html).toContain("Project start date");
     expect(html).toContain("Project end date");
@@ -433,7 +493,9 @@ describe("Momo dashboard shell", () => {
     expect(html).toContain("Open issues");
     expect(html).toContain("ranges");
     expect(html).toContain("done");
-    expect(html).toContain("2 issues");
+    expect(html).toContain("todo");
+    expect(html).toContain("doing");
+    expect(html).toContain("done");
     expect(html).toContain("Open Project OS issues for Momo desktop");
     expect(html).not.toContain("Confirm project range");
     expect(html).not.toContain("The team knows who owns the project range before review.");
@@ -449,8 +511,8 @@ describe("Momo dashboard shell", () => {
     expect(html).toContain("Link Folder");
     expect(html).toContain("Analyze/Sync Project");
     expect(html).toContain("Auto Sync");
-    expect(html).toContain("Latest sync found work that moves this project forward");
-    expect(html).toContain("Found work that moves this project forward.");
+    expect(html).not.toContain("Latest sync found work that moves this project forward");
+    expect(html).not.toContain("Found work that moves this project forward.");
     expect(html).not.toContain("Unlinked blocker");
     expect(dailyHtml).toContain("Review calendar grouping");
     expect(dailyHtml).toContain("Delete");
@@ -483,9 +545,10 @@ describe("Momo dashboard shell", () => {
     expect(html).not.toContain("Give users a clear path after payment failure");
   });
 
-  it("renders compact Project OS Git receipt summary with collapsed technical details", async () => {
+  it("keeps Today project cards summarized and renders status-grouped Project Issues in the modal", async () => {
     const store = await import("./work_os_store");
     const { TodayDashboard } = await import("./today_dashboard");
+    const { ProjectIssueDialog } = await import("./work_os_project_list");
     const project = store.createWorkProject({ name: "Git-aware Project OS" });
     store.linkWorkProjectFolder(project.id, {
       path: "/Users/momo/projects/git-aware",
@@ -548,6 +611,15 @@ describe("Momo dashboard shell", () => {
     });
 
     const html = renderToString(() => <TodayDashboard />);
+    const dialogProject = store.workOsState.projects.find((item) => item.id === project.id);
+    if (dialogProject === undefined) throw new Error("Expected dialog project.");
+    const dialogHtml = renderToString(() => (
+      <ProjectIssueDialog
+        project={dialogProject}
+        issues={store.workOsState.issues.filter((issue) => issue.projectId === project.id)}
+        onClose={() => undefined}
+      />
+    ));
     if (process.env.MOMO_PROJECT_OS_VISUAL_EVIDENCE === "1") {
       const evidencePath = fileURLToPath(
         new URL(
@@ -559,22 +631,34 @@ describe("Momo dashboard shell", () => {
       await writeFile(evidencePath, html, "utf8");
     }
 
-    expect(html).toContain("Git changes were included as evidence");
-    expect(html).toContain(
-      "긴급 결제 복구 안내와 온보딩 체크리스트 변경이 이번 프로젝트 분석 증거로 함께 포함되었습니다.",
-    );
-    expect(html).toContain("Git receipt details");
-    expect(html).toContain("<details");
-    expect(html).not.toContain("<details open");
-    expect(html).toContain("123456a..abcdef1");
-    expect(html).toContain("docs/payment-recovery.md");
-    expect(html).toContain("src/onboarding/checklist.tsx");
-    expect(html).toContain("3 issues");
+    expect(html).toContain("todo");
+    expect(html).toContain("doing");
+    expect(html).toContain("done");
+    expect(html).toContain("2");
+    expect(html).toContain("1");
+    expect(html).toContain("0");
     expect(html).toContain("Open Project OS issues for Git-aware Project OS");
     expect(html).not.toContain("사용자가 새 버전을 안전하게 업데이트할 수 있게 하기");
     expect(html).not.toContain("결제 실패 후 사용자가 다시 진행할 방법 보여주기");
     expect(html).not.toContain("첫 설정 단계에서 다음 행동을 분명하게 보여주기");
     expect(html).not.toContain("Technical details and source evidence");
+    expect(html).not.toContain("Git receipt details");
+    expect(html).not.toContain(
+      "긴급 결제 복구 안내와 온보딩 체크리스트 변경이 이번 프로젝트 분석 증거로 함께 포함되었습니다.",
+    );
+    expect(dialogHtml).toContain("해야 할 일");
+    expect(dialogHtml).toContain("진행 중");
+    expect(dialogHtml).toContain("완료");
+    expect(dialogHtml).toContain('data-project-issue-layout="three-status-columns"');
+    expect(dialogHtml).toContain("사용자가 새 버전을 안전하게 업데이트할 수 있게 하기");
+    expect(dialogHtml).toContain("결제 실패 후 사용자가 다시 진행할 방법 보여주기");
+    expect(dialogHtml).toContain("첫 설정 단계에서 다음 행동을 분명하게 보여주기");
+    expect(dialogHtml).toContain("Git receipt details");
+    expect(dialogHtml).toContain("123456a..abcdef1");
+    expect(dialogHtml).toContain("docs/payment-recovery.md");
+    expect(dialogHtml).toContain("src/onboarding/checklist.tsx");
+    expect(dialogHtml).toContain("<details");
+    expect(dialogHtml).not.toContain("<details open");
   });
 
   it("does not render secret-looking paths restored from Project OS Git receipts", async () => {
@@ -630,9 +714,14 @@ describe("Momo dashboard shell", () => {
         ideas: [],
       }),
     );
-    const { TodayDashboard } = await import("./today_dashboard");
+    const store = await import("./work_os_store");
+    const { ProjectIssueDialog } = await import("./work_os_project_list");
 
-    const html = renderToString(() => <TodayDashboard />);
+    const project = store.workOsState.projects[0];
+    if (project === undefined) throw new Error("Expected restored project.");
+    const html = renderToString(() => (
+      <ProjectIssueDialog project={project} issues={[]} onClose={() => undefined} />
+    ));
 
     expect(html).toContain("docs/payment-recovery.md");
     expect(html).not.toContain("docs/Knowledge/notes.md");
@@ -691,8 +780,8 @@ describe("Momo dashboard shell", () => {
           summary: "Stakeholders need a short project status update.",
           userOutcome: "Stakeholders can see what changed since the last review.",
           nextAction: "Draft the stakeholder update with decisions and blockers.",
-          status: "backlog",
-          statusReason: "The update is identified but not started.",
+          status: "done",
+          statusReason: "The update is already reflected in the project record.",
           priority: "medium",
           priorityReason: "The update helps coordination but is not blocking.",
           sourceEvidence: ["docs/status.md"],
@@ -919,10 +1008,11 @@ describe("Momo dashboard shell", () => {
       if (command === "plugin_get_settings_with_secrets") return aiChatSettings("nvidia");
       if (command === "agent_get_agent_api_key_status") return { configured: true };
       if (command === "agent_run_openai_compatible_chat") {
-        return projectAnalysisResponse(
+        return koreanProjectAnalysisResponse(
           projectIdFromRequestArgs(args),
           "TestFlight 제출 전 릴리즈 준비 상태 확정",
           "ios/ReleaseChecklist.swift",
+          "doing",
         );
       }
       throw new Error(`Unexpected invoke command: ${command}; args=${JSON.stringify(args)}`);
@@ -930,7 +1020,11 @@ describe("Momo dashboard shell", () => {
     vi.doMock("@tauri-apps/api/core", () => ({ invoke: invokeMock }));
     const store = await import("./work_os_store");
     const { runProjectOsAnalysis } = await import("./project_os_analysis_runner");
-    const project = store.createWorkProject({ name: "별멍" });
+    const project = store.createWorkProject({
+      name: "별멍",
+      startDate: "2026-07-01",
+      endDate: "2026-07-03",
+    });
     store.linkWorkProjectFolder(project.id, { path: "/tmp/byeolmung", name: "byeolmung" });
     store.recordProjectOsRunReceipt(project.id, {
       runId: "previous-run",
@@ -959,7 +1053,13 @@ describe("Momo dashboard shell", () => {
       invokeMock.mock.calls
         .filter(([command]) => command === "project_os_git_summary")
         .map(([, args]) => args),
-    ).toEqual([expect.objectContaining({ previousCommit: null })]);
+    ).toEqual([
+      expect.objectContaining({
+        previousCommit: null,
+        startDate: "2026-07-01",
+        endDate: "2026-07-03",
+      }),
+    ]);
     const chatArgs = invokeMock.mock.calls.find(
       ([command]) => command === "agent_run_openai_compatible_chat",
     )?.[1] as { readonly request?: { readonly content?: string } } | undefined;
@@ -970,8 +1070,157 @@ describe("Momo dashboard shell", () => {
     expect(chatRequest).toContain("Keep titles and issue text very short");
     expect(chatRequest).toContain("ios/ReleaseChecklist.swift");
     expect(chatRequest).toContain("workers/horoscope.ts");
+    expect(chatRequest).toContain("commitsByDate");
+    expect(chatRequest).toContain("workingTree");
     expect(store.workOsState.issues.map((issue) => issue.title)).toContain(
       "TestFlight 제출 전 릴리즈 준비 상태 확정",
+    );
+    expect(store.workOsState.issues[0]?.status).toBe("doing");
+  });
+
+  it("creates different Korean Project Issues from different schedule date-range Git fixtures", async () => {
+    localStorage.setItem("settings-cache", JSON.stringify({ projectIssueLanguage: "ko" }));
+    const prompts: string[] = [];
+    const invokeMock = vi.fn(async (command: string, args?: unknown) => {
+      if (command === "project_os_scan_folder") {
+        return projectScan([{ path: "docs/project.md", snippet: "Project owner note." }]);
+      }
+      if (command === "project_os_git_summary") {
+        const serializedArgs = JSON.stringify(args);
+        if (serializedArgs.includes("2026-07-01")) {
+          return {
+            ...readyGitSummary("docs/july-first.md", null, "2026-07-01..2026-07-02"),
+            commitsByDate: [
+              {
+                date: "2026-07-01",
+                commits: [
+                  {
+                    shortHash: "aaaa111",
+                    subject: "결제 안내 정리",
+                    author: "Momo",
+                    authorDate: "2026-07-01T10:00:00+09:00",
+                    changedPaths: ["docs/july-first.md"],
+                    diffStat: [{ path: "docs/july-first.md", additions: 5, deletions: 1 }],
+                  },
+                ],
+              },
+              { date: "2026-07-02", commits: [] },
+            ],
+          };
+        }
+        return {
+          ...readyGitSummary("docs/july-third.md", null, "2026-07-03..2026-07-04"),
+          commitsByDate: [
+            { date: "2026-07-03", commits: [] },
+            {
+              date: "2026-07-04",
+              commits: [
+                {
+                  shortHash: "bbbb222",
+                  subject: "온보딩 점검 완료",
+                  author: "Momo",
+                  authorDate: "2026-07-04T10:00:00+09:00",
+                  changedPaths: ["docs/july-third.md"],
+                  diffStat: [{ path: "docs/july-third.md", additions: 2, deletions: 0 }],
+                },
+              ],
+            },
+          ],
+        };
+      }
+      if (command === "plugin_get_settings_with_secrets") return aiChatSettings("nvidia");
+      if (command === "agent_get_agent_api_key_status") return { configured: true };
+      if (command === "agent_run_openai_compatible_chat") {
+        const content = (args as { readonly request?: { readonly content?: string } }).request?.content ?? "";
+        prompts.push(content);
+        return content.includes("docs/july-first.md")
+          ? koreanProjectAnalysisResponse(
+              projectIdFromRequestArgs(args),
+              "결제 안내 확인 기준 정하기",
+              "docs/july-first.md",
+              "todo",
+            )
+          : koreanProjectAnalysisResponse(
+              projectIdFromRequestArgs(args),
+              "온보딩 점검 완료 상태 확인",
+              "docs/july-third.md",
+              "done",
+            );
+      }
+      throw new Error(`Unexpected invoke command: ${command}; args=${JSON.stringify(args)}`);
+    });
+    vi.doMock("@tauri-apps/api/core", () => ({ invoke: invokeMock }));
+    const store = await import("./work_os_store");
+    const { runProjectOsAnalysis } = await import("./project_os_analysis_runner");
+    const first = store.createWorkProject({
+      name: "결제 프로젝트",
+      startDate: "2026-07-01",
+      endDate: "2026-07-02",
+    });
+    const second = store.createWorkProject({
+      name: "온보딩 프로젝트",
+      startDate: "2026-07-03",
+      endDate: "2026-07-04",
+    });
+    store.linkWorkProjectFolder(first.id, { path: "/tmp/july-first", name: "july-first" });
+    store.linkWorkProjectFolder(second.id, { path: "/tmp/july-third", name: "july-third" });
+    const firstProject = store.workOsState.projects.find((item) => item.id === first.id);
+    const secondProject = store.workOsState.projects.find((item) => item.id === second.id);
+    if (firstProject === undefined || secondProject === undefined) throw new Error("Expected projects.");
+
+    await runProjectOsAnalysis(firstProject);
+    await runProjectOsAnalysis(secondProject);
+
+    expect(
+      invokeMock.mock.calls
+        .filter(([command]) => command === "project_os_git_summary")
+        .map(([, args]) => args),
+    ).toEqual([
+      expect.objectContaining({ startDate: "2026-07-01", endDate: "2026-07-02" }),
+      expect.objectContaining({ startDate: "2026-07-03", endDate: "2026-07-04" }),
+    ]);
+    expect(prompts[0]).toContain("docs/july-first.md");
+    expect(prompts[1]).toContain("docs/july-third.md");
+    expect(store.workOsState.issues.map((issue) => issue.title)).toEqual(
+      expect.arrayContaining(["결제 안내 확인 기준 정하기", "온보딩 점검 완료 상태 확인"]),
+    );
+    expect(store.workOsState.issues.map((issue) => issue.status)).toEqual(
+      expect.arrayContaining(["todo", "done"]),
+    );
+  });
+
+  it("does not create Project OS issues when Korean output validation rejects English text", async () => {
+    localStorage.setItem("settings-cache", JSON.stringify({ projectIssueLanguage: "ko" }));
+    const invokeMock = vi.fn(async (command: string, args?: unknown) => {
+      if (command === "project_os_scan_folder") {
+        return projectScan([{ path: "docs/release.md", snippet: "Release owner note." }]);
+      }
+      if (command === "project_os_git_summary") return readyGitSummary("docs/release.md");
+      if (command === "plugin_get_settings_with_secrets") return aiChatSettings("nvidia");
+      if (command === "agent_get_agent_api_key_status") return { configured: true };
+      if (command === "agent_run_openai_compatible_chat") {
+        return projectAnalysisResponse(
+          projectIdFromRequestArgs(args),
+          "Confirm release owner before launch",
+          "docs/release.md",
+        );
+      }
+      throw new Error(`Unexpected invoke command: ${command}; args=${JSON.stringify(args)}`);
+    });
+    vi.doMock("@tauri-apps/api/core", () => ({ invoke: invokeMock }));
+    const store = await import("./work_os_store");
+    const { runProjectOsAnalysis } = await import("./project_os_analysis_runner");
+    const project = store.createWorkProject({ name: "릴리즈" });
+    store.linkWorkProjectFolder(project.id, { path: "/tmp/release-ko", name: "release-ko" });
+    const linkedProject = store.workOsState.projects.find((item) => item.id === project.id);
+    if (linkedProject === undefined) throw new Error("Expected linked project.");
+
+    const result = await runProjectOsAnalysis(linkedProject);
+
+    expect(result.kind).toBe("failed");
+    expect(store.workOsState.issues).toHaveLength(0);
+    expect(store.workOsState.projects[0]?.manualSync.error).toContain(
+      "must be Korean when Project Issue language is Korean",
     );
   });
 

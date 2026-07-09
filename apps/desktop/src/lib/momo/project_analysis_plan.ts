@@ -1,7 +1,7 @@
 import type { ProjectGitSummary, ProjectOsManifest } from "../project_os_fs";
 import { validateProjectAnalysisPlan } from "./project_analysis_plan_validation";
 
-type ProjectIssueStatus = "backlog" | "doing" | "done" | "todo";
+type ProjectIssueStatus = "doing" | "done" | "todo";
 type ProjectIssuePriority = "high" | "low" | "medium";
 
 type ProjectSourceEvidence = string;
@@ -89,9 +89,11 @@ function buildProjectAnalysisPrompt(input: ProjectAnalysisPromptInput): string {
       boundedEvidenceRule:
         "Use only this bounded manifest and Git metadata summary. Do not ask the model to inspect files or Git directly.",
       gitMetadataRule:
-        "Use Git metadata as the primary signal: status lines, changed paths, diff stats, and recent commit subjects. Do not infer detailed implementation behavior from source code.",
+        "Use Git metadata as the primary signal: commitsByDate, commit subjects, short hashes, authors/dates, changed paths, additions/deletions, and current staged/unstaged/untracked paths. Do not infer detailed implementation behavior from source code.",
+      scheduleRangeRule:
+        "Use every commitsByDate entry in the schedule date range, including dates with no commits, before deciding whether work is todo, doing, or done.",
       distinctWorkRule:
-        "Create or update only the few clearest owner-facing work items. Prefer one concise issue when the metadata points to one project move.",
+        "Create or update the clearest owner-facing work items. Separate todo, doing, and done only when the schedule-range Git metadata shows distinct project moves.",
     },
     outputContract: {
       kind: "project_analysis",
@@ -118,10 +120,12 @@ function buildProjectAnalysisPrompt(input: ProjectAnalysisPromptInput): string {
         "Use one short non-developer title. Keep filenames, functions, and commit hashes out of titles.",
       conciseCopyRule:
         "Keep every user-facing field very short: title under 70 characters, summary and nextAction one sentence each, technicalDetails under 180 characters.",
+      statusRule:
+        "Use only todo, doing, or done. todo is work still needed, doing is work partly underway, and done is work Git metadata shows as already completed.",
       scopeRule:
         "Use only the linked project evidence in this payload and return Project OS issue operations only.",
       createCountRule:
-        "The outputShape shows one create as the default. Return more only when Git metadata clearly shows separate owner-facing work.",
+        "The outputShape shows multiple statuses. Return only evidence-backed issues, but do not collapse separate schedule-date work into one vague issue.",
       outputShape: {
         kind: "project_analysis",
         projectId: input.projectId,
@@ -130,12 +134,40 @@ function buildProjectAnalysisPrompt(input: ProjectAnalysisPromptInput): string {
           {
             kind: "project_issue",
             projectId: input.projectId,
-            title: "Owner-readable project issue title",
-            summary: "Plain-language gist of the work.",
-            userOutcome: "The user-visible outcome this work likely enables.",
-            nextAction: "The next simple action a project owner can take.",
+            title: "Owner-readable todo title",
+            summary: "Plain-language gist of the remaining work.",
+            userOutcome: "The user-visible outcome this work enables.",
+            nextAction: "The next simple check a project owner can take.",
             status: "todo",
             statusReason: "Why this status fits the evidence.",
+            priority: "medium",
+            priorityReason: "Why this priority fits the evidence.",
+            sourceEvidence: ["relative/path/from/provided/evidence"],
+            technicalDetails: "Brief metadata-based context grounded in the evidence.",
+          },
+          {
+            kind: "project_issue",
+            projectId: input.projectId,
+            title: "Owner-readable in-progress title",
+            summary: "Plain-language gist of partly completed work.",
+            userOutcome: "The user-visible outcome this work enables.",
+            nextAction: "The next simple verification step.",
+            status: "doing",
+            statusReason: "Why current Git metadata shows partial progress.",
+            priority: "medium",
+            priorityReason: "Why this priority fits the evidence.",
+            sourceEvidence: ["relative/path/from/provided/evidence"],
+            technicalDetails: "Brief metadata-based context grounded in the evidence.",
+          },
+          {
+            kind: "project_issue",
+            projectId: input.projectId,
+            title: "Owner-readable completed title",
+            summary: "Plain-language gist of completed work.",
+            userOutcome: "The user-visible outcome this work enables.",
+            nextAction: "The next simple confirmation step.",
+            status: "done",
+            statusReason: "Why Git history shows this work is complete.",
             priority: "medium",
             priorityReason: "Why this priority fits the evidence.",
             sourceEvidence: ["relative/path/from/provided/evidence"],
@@ -165,7 +197,8 @@ function buildProjectAnalysisPrompt(input: ProjectAnalysisPromptInput): string {
     language.rule,
     "JSON property names, status enum values, priority enum values, projectId, issueId, and sourceEvidence paths must stay unchanged and must not be translated.",
     "Use Git metadata as the primary signal and explain the likely project work in plain non-developer language.",
-    "Keep titles and issue text very short. Prefer one concise issue unless metadata clearly shows separate work.",
+    "Use every commitsByDate entry in the schedule date range and classify issues as todo, doing, or done.",
+    "Keep titles and issue text very short. Create separate issues only when metadata clearly shows separate work.",
     "Reject unsafe paths, outside-folder evidence, Git write intent, and developer-only issue titles.",
     JSON.stringify(payload, null, 2),
   ].join("\n");
@@ -183,6 +216,45 @@ function parseProjectAnalysisPlanJson(
       return { kind: "invalid", errors: ["ProjectAnalysisPlan must be valid JSON"] };
     }
     throw error;
+  }
+}
+
+function projectAnalysisPlanLanguageErrors(
+  plan: ProjectAnalysisPlan,
+  language: ProjectIssueOutputLanguage,
+): readonly string[] {
+  if (language !== "ko") return [];
+  const errors: string[] = [];
+  requireKorean(plan.summary, "plan.summary", errors);
+  plan.creates.forEach((issue, index) => {
+    requireKorean(issue.title, `creates[${index}].title`, errors);
+    requireKorean(issue.summary, `creates[${index}].summary`, errors);
+    requireKorean(issue.userOutcome, `creates[${index}].userOutcome`, errors);
+    requireKorean(issue.nextAction, `creates[${index}].nextAction`, errors);
+    requireKorean(issue.statusReason, `creates[${index}].statusReason`, errors);
+    requireKorean(issue.priorityReason, `creates[${index}].priorityReason`, errors);
+    requireKorean(issue.technicalDetails, `creates[${index}].technicalDetails`, errors);
+  });
+  plan.updates.forEach((update, index) => {
+    for (const [key, value] of Object.entries(update)) {
+      if (
+        key === "summary" ||
+        key === "userOutcome" ||
+        key === "nextAction" ||
+        key === "statusReason" ||
+        key === "priorityReason" ||
+        key === "technicalDetails"
+      ) {
+        requireKorean(value, `updates[${index}].${key}`, errors);
+      }
+    }
+  });
+  return errors;
+}
+
+function requireKorean(value: unknown, label: string, errors: string[]): void {
+  if (typeof value === "string" && !/[가-힣]/.test(value)) {
+    errors.push(`${label} must be Korean when Project Issue language is Korean`);
   }
 }
 
@@ -209,7 +281,12 @@ function projectIssueLanguage(language: ProjectIssueOutputLanguage): {
   }
 }
 
-export { buildProjectAnalysisPrompt, parseProjectAnalysisPlanJson, validateProjectAnalysisPlan };
+export {
+  buildProjectAnalysisPrompt,
+  parseProjectAnalysisPlanJson,
+  projectAnalysisPlanLanguageErrors,
+  validateProjectAnalysisPlan,
+};
 export type {
   ProjectAnalysisLastRunReceipt,
   ProjectAnalysisPlan,

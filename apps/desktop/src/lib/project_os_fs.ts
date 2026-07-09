@@ -27,6 +27,38 @@ export type ProjectOsScanLimits = {
 
 export type ProjectGitSummaryStatus = "failed" | "notGit" | "notRepoRoot" | "ready";
 
+export type ProjectGitSummaryRequest = {
+  readonly previousCommit?: string | null;
+  readonly startDate?: string | null;
+  readonly endDate?: string | null;
+};
+
+export type ProjectGitFileStat = {
+  readonly path: string;
+  readonly additions: number;
+  readonly deletions: number;
+};
+
+export type ProjectGitCommitSummary = {
+  readonly shortHash: string;
+  readonly subject: string;
+  readonly author: string;
+  readonly authorDate: string;
+  readonly changedPaths: readonly string[];
+  readonly diffStat: readonly ProjectGitFileStat[];
+};
+
+export type ProjectGitDateSummary = {
+  readonly date: string;
+  readonly commits: readonly ProjectGitCommitSummary[];
+};
+
+export type ProjectGitWorkingTreeSummary = {
+  readonly stagedPaths: readonly string[];
+  readonly unstagedPaths: readonly string[];
+  readonly untrackedPaths: readonly string[];
+};
+
 export type ProjectGitSummary = {
   readonly status: ProjectGitSummaryStatus;
   readonly head: string | null;
@@ -37,6 +69,8 @@ export type ProjectGitSummary = {
   readonly diffNameStatus: readonly string[];
   readonly diffStat: readonly string[];
   readonly logOneline: readonly string[];
+  readonly commitsByDate: readonly ProjectGitDateSummary[];
+  readonly workingTree: ProjectGitWorkingTreeSummary;
   readonly message: string | null;
 };
 
@@ -53,10 +87,16 @@ export async function scanProjectOsFolder(path: string): Promise<ProjectOsManife
 
 export async function readProjectGitSummary(
   path: string,
-  previousCommit: string | null,
+  request: ProjectGitSummaryRequest = {},
 ): Promise<ProjectGitSummary> {
   validateProjectRoot(path);
-  const summary = await invoke<ProjectGitSummary>("project_os_git_summary", { path, previousCommit });
+  const normalizedRequest = normalizeProjectGitSummaryRequest(request);
+  const summary = await invoke<ProjectGitSummary>("project_os_git_summary", {
+    path,
+    previousCommit: normalizedRequest.previousCommit,
+    startDate: normalizedRequest.startDate,
+    endDate: normalizedRequest.endDate,
+  });
   const normalized = normalizeProjectGitSummary(summary);
   validateProjectGitSummary(normalized);
   return normalized;
@@ -106,13 +146,43 @@ function validateProjectGitSummary(summary: ProjectGitSummary): void {
   for (const line of summary.logOneline) {
     validateGitSummaryLogLine(line);
   }
+  for (const dateSummary of summary.commitsByDate) {
+    validateGitSummaryDate(dateSummary.date);
+    for (const commit of dateSummary.commits) {
+      validateGitSummaryCommit(commit);
+    }
+  }
+  for (const path of summary.workingTree.stagedPaths) validateGitSummaryPath(path);
+  for (const path of summary.workingTree.unstagedPaths) validateGitSummaryPath(path);
+  for (const path of summary.workingTree.untrackedPaths) validateGitSummaryPath(path);
 }
 
 function normalizeProjectGitSummary(summary: ProjectGitSummary): ProjectGitSummary {
-  if (summary.status === "ready" && summary.head !== null && summary.previousCommit === summary.head) {
-    return { ...summary, logOneline: [] };
+  const normalized: ProjectGitSummary = {
+    ...summary,
+    commitsByDate: summary.commitsByDate ?? [],
+    workingTree: summary.workingTree ?? emptyWorkingTreeSummary(),
+  };
+  if (
+    normalized.status === "ready" &&
+    normalized.head !== null &&
+    normalized.previousCommit === normalized.head
+  ) {
+    return { ...normalized, logOneline: [] };
   }
-  return summary;
+  return normalized;
+}
+
+function normalizeProjectGitSummaryRequest(request: ProjectGitSummaryRequest): {
+  readonly previousCommit: string | null;
+  readonly startDate: string | null;
+  readonly endDate: string | null;
+} {
+  return {
+    previousCommit: request.previousCommit ?? null,
+    startDate: request.startDate ?? null,
+    endDate: request.endDate ?? null,
+  };
 }
 
 function validateManifestPath(path: string): void {
@@ -139,6 +209,39 @@ function validateGitSummaryPath(path: string): void {
 function validateGitSummaryLogLine(line: string): void {
   if (line.trim() === "" || line.includes("\0") || gitSummaryTextIsSensitive(line)) {
     throw new Error(`Invalid project git summary log line: ${line}`);
+  }
+}
+
+function validateGitSummaryCommit(commit: ProjectGitCommitSummary): void {
+  if (!/^[0-9a-f]{7,64}$/i.test(commit.shortHash)) {
+    throw new Error(`Invalid project git summary commit hash: ${commit.shortHash}`);
+  }
+  validateGitSummaryText(commit.subject, "commit subject");
+  validateGitSummaryText(commit.author, "commit author");
+  validateGitSummaryText(commit.authorDate, "commit author date");
+  for (const path of commit.changedPaths) validateGitSummaryPath(path);
+  for (const stat of commit.diffStat) {
+    validateGitSummaryPath(stat.path);
+    validateGitSummaryCount(stat.additions, stat.path);
+    validateGitSummaryCount(stat.deletions, stat.path);
+  }
+}
+
+function validateGitSummaryText(text: string, label: string): void {
+  if (text.trim() === "" || text.includes("\0") || gitSummaryTextIsSensitive(text)) {
+    throw new Error(`Invalid project git summary ${label}: ${text}`);
+  }
+}
+
+function validateGitSummaryDate(date: string): void {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    throw new Error(`Invalid project git summary date: ${date}`);
+  }
+}
+
+function validateGitSummaryCount(value: number, path: string): void {
+  if (!Number.isInteger(value) || value < 0) {
+    throw new Error(`Invalid project git summary diff stat count for: ${path}`);
   }
 }
 
@@ -228,3 +331,7 @@ const PROJECT_GIT_SUMMARY_STATUSES = new Set<ProjectGitSummaryStatus>([
   "notRepoRoot",
   "ready",
 ]);
+
+function emptyWorkingTreeSummary(): ProjectGitWorkingTreeSummary {
+  return { stagedPaths: [], unstagedPaths: [], untrackedPaths: [] };
+}

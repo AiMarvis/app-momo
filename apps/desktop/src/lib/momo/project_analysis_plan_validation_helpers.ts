@@ -86,13 +86,12 @@ function sourceEvidencePath(
 
 function statusFor(value: unknown, label: string, context: ValidationContext): ProjectIssueStatus | null {
   switch (value) {
-    case "backlog":
     case "doing":
     case "done":
     case "todo":
       return value;
     default:
-      context.errors.push(`${label} must be backlog, todo, doing, or done`);
+      context.errors.push(`${label} must be todo, doing, or done`);
       return null;
   }
 }

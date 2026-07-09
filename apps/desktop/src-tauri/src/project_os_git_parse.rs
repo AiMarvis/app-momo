@@ -100,7 +100,7 @@ pub(super) fn git_diff_stat_path_is_safe(path: &str) -> Result<(), ()> {
     validate_project_relative_segments(path)
 }
 
-fn parse_status_short_paths(path: &str) -> Result<Vec<String>, ()> {
+pub(super) fn parse_status_short_paths(path: &str) -> Result<Vec<String>, ()> {
     if let Some((old_path, new_path)) = path.split_once(" -> ") {
         git_relative_path_is_safe(old_path)?;
         git_relative_path_is_safe(new_path)?;

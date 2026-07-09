@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   chooseProjectOsFolder,
+  type ProjectGitSummary,
   type ProjectOsManifest,
   readProjectGitSummary,
   scanProjectOsFolder,
@@ -26,6 +27,24 @@ function manifestWithPath(path: string): ProjectOsManifest {
       bytesRead: 19,
       truncated: false,
     },
+  };
+}
+
+function gitSummary(summary: Partial<ProjectGitSummary> = {}): ProjectGitSummary {
+  return {
+    status: "ready",
+    head: "abc1234",
+    previousCommit: null,
+    range: "HEAD",
+    changedPaths: [],
+    statusShort: [],
+    diffNameStatus: [],
+    diffStat: [],
+    logOneline: [],
+    commitsByDate: [],
+    workingTree: { stagedPaths: [], unstagedPaths: [], untrackedPaths: [] },
+    message: null,
+    ...summary,
   };
 }
 
@@ -71,61 +90,92 @@ describe("project_os_fs", () => {
   });
 
   it("accepts non-Git project summaries as non-fatal results", async () => {
-    const summary = {
+    const summary = gitSummary({
       status: "notGit",
       head: null,
       previousCommit: "abc1234",
       range: null,
-      changedPaths: [],
-      statusShort: [],
-      diffNameStatus: [],
-      diffStat: [],
-      logOneline: [],
       message: "Project folder is not a Git repository.",
-    };
+    });
     mockInvoke.mockResolvedValueOnce(summary);
 
-    await expect(readProjectGitSummary("/tmp/project", "abc1234")).resolves.toEqual(summary);
+    await expect(readProjectGitSummary("/tmp/project", { previousCommit: "abc1234" })).resolves.toEqual(
+      summary,
+    );
     expect(mockInvoke).toHaveBeenCalledWith("project_os_git_summary", {
       path: "/tmp/project",
       previousCommit: "abc1234",
+      startDate: null,
+      endDate: null,
+    });
+  });
+
+  it("requests bounded schedule-range Git metadata without exposing file contents", async () => {
+    const summary = gitSummary({
+      head: "ddddddd",
+      range: "2026-07-01..2026-07-03",
+      changedPaths: ["docs/release.md"],
+      commitsByDate: [
+        { date: "2026-07-01", commits: [] },
+        {
+          date: "2026-07-02",
+          commits: [
+            {
+              shortHash: "ddddddd",
+              subject: "Prepare release note",
+              author: "Momo",
+              authorDate: "2026-07-02T10:30:00+09:00",
+              changedPaths: ["docs/release.md"],
+              diffStat: [{ path: "docs/release.md", additions: 4, deletions: 1 }],
+            },
+          ],
+        },
+        { date: "2026-07-03", commits: [] },
+      ],
+      workingTree: {
+        stagedPaths: ["docs/release.md"],
+        unstagedPaths: ["src/app.ts"],
+        untrackedPaths: ["docs/todo.md"],
+      },
+    });
+    mockInvoke.mockResolvedValueOnce(summary);
+
+    await expect(
+      readProjectGitSummary("/tmp/project", { startDate: "2026-07-01", endDate: "2026-07-03" }),
+    ).resolves.toEqual(summary);
+    expect(mockInvoke).toHaveBeenCalledWith("project_os_git_summary", {
+      path: "/tmp/project",
+      previousCommit: null,
+      startDate: "2026-07-01",
+      endDate: "2026-07-03",
     });
   });
 
   it("accepts safe Git rename status lines as project-local evidence", async () => {
-    const summary = {
-      status: "ready",
+    const summary = gitSummary({
       head: "ccccccc",
-      previousCommit: null,
       range: null,
       changedPaths: ["src/old.ts", "src/new.ts"],
       statusShort: [" R src/old.ts -> src/new.ts"],
       diffNameStatus: ["R100\tsrc/old.ts\tsrc/new.ts"],
       diffStat: ["src/{old.ts => new.ts} | 2 +-"],
       logOneline: ["ccccccc Rename setup step"],
-      message: null,
-    };
+    });
     mockInvoke.mockResolvedValueOnce(summary);
 
-    await expect(readProjectGitSummary("/tmp/project", null)).resolves.toEqual(summary);
+    await expect(readProjectGitSummary("/tmp/project", {})).resolves.toEqual(summary);
   });
 
   it("drops stale commit log entries when the previous analyzed commit is already HEAD", async () => {
-    const summary = {
-      status: "ready",
+    const summary = gitSummary({
       head: "ddddddd",
       previousCommit: "ddddddd",
       range: null,
-      changedPaths: [],
-      statusShort: [],
-      diffNameStatus: [],
-      diffStat: [],
       logOneline: ["ddddddd stale release commit"],
-      message: null,
-    };
+    });
     mockInvoke.mockResolvedValueOnce(summary);
 
-    await expect(readProjectGitSummary("/tmp/project", "ddddddd")).resolves.toEqual({
+    await expect(readProjectGitSummary("/tmp/project", { previousCommit: "ddddddd" })).resolves.toEqual({
       ...summary,
       logOneline: [],
     });
@@ -133,20 +183,13 @@ describe("project_os_fs", () => {
 
   it("rejects Git summaries that contain unsafe, outside, or second-brain paths", async () => {
     for (const path of ["/tmp/secret.md", "../secret.md", "Inbox/raw.md"]) {
-      mockInvoke.mockResolvedValueOnce({
-        status: "ready",
-        head: "abc1234",
-        previousCommit: null,
+      mockInvoke.mockResolvedValueOnce(gitSummary({
         range: "abc1234",
         changedPaths: [path],
         statusShort: [` M ${path}`],
-        diffNameStatus: [],
-        diffStat: [],
-        logOneline: [],
-        message: null,
-      });
+      }));
 
-      await expect(readProjectGitSummary("/tmp/project", null)).rejects.toThrow(
+      await expect(readProjectGitSummary("/tmp/project", {})).rejects.toThrow(
         /invalid project git summary path/i,
       );
     }
@@ -154,20 +197,13 @@ describe("project_os_fs", () => {
 
   it("rejects Git summaries that contain secret-looking paths", async () => {
     for (const path of [".env", "config/app.pem", "docs/private-plan.md", "src/api_token.ts"]) {
-      mockInvoke.mockResolvedValueOnce({
-        status: "ready",
-        head: "abc1234",
-        previousCommit: null,
+      mockInvoke.mockResolvedValueOnce(gitSummary({
         range: "abc1234",
         changedPaths: [path],
         statusShort: [` M ${path}`],
-        diffNameStatus: [],
-        diffStat: [],
-        logOneline: [],
-        message: null,
-      });
+      }));
 
-      await expect(readProjectGitSummary("/tmp/project", null)).rejects.toThrow(
+      await expect(readProjectGitSummary("/tmp/project", {})).rejects.toThrow(
         /invalid project git summary path/i,
       );
     }
@@ -179,22 +215,52 @@ describe("project_os_fs", () => {
       "abc1234 Explain ../private-plan.md",
       "abc1234 Update docs/private-plan.md",
     ]) {
-      mockInvoke.mockResolvedValueOnce({
-        status: "ready",
-        head: "abc1234",
-        previousCommit: null,
+      mockInvoke.mockResolvedValueOnce(gitSummary({
         range: "abc1234",
         changedPaths: ["src/main.ts"],
-        statusShort: [],
-        diffNameStatus: [],
-        diffStat: [],
         logOneline: [line],
-        message: null,
-      });
+      }));
 
-      await expect(readProjectGitSummary("/tmp/project", null)).rejects.toThrow(
+      await expect(readProjectGitSummary("/tmp/project", {})).rejects.toThrow(
         /invalid project git summary log line/i,
       );
     }
+  });
+
+  it("rejects unsafe paths inside schedule commit metadata and working tree buckets", async () => {
+    mockInvoke.mockResolvedValueOnce(gitSummary({
+      commitsByDate: [
+        {
+          date: "2026-07-02",
+          commits: [
+            {
+              shortHash: "abc1234",
+              subject: "Mention release work",
+              author: "Momo",
+              authorDate: "2026-07-02T10:30:00+09:00",
+              changedPaths: ["Knowledge/raw.md"],
+              diffStat: [{ path: "docs/release.md", additions: 1, deletions: 0 }],
+            },
+          ],
+        },
+      ],
+      workingTree: { stagedPaths: [], unstagedPaths: [], untrackedPaths: [] },
+    }));
+
+    await expect(readProjectGitSummary("/tmp/project", {})).rejects.toThrow(
+      /invalid project git summary path/i,
+    );
+
+    mockInvoke.mockResolvedValueOnce(gitSummary({
+      workingTree: {
+        stagedPaths: ["docs/release.md"],
+        unstagedPaths: ["../outside.md"],
+        untrackedPaths: [],
+      },
+    }));
+
+    await expect(readProjectGitSummary("/tmp/project", {})).rejects.toThrow(
+      /invalid project git summary path/i,
+    );
   });
 });

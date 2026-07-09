@@ -5,7 +5,10 @@ use super::parse::{git_diff_stat_path_is_safe, git_relative_path_is_safe};
 use super::test_support::{
     TempProjectRoot, git_output, git_status_output, git_summary_with_outputs,
 };
-use super::{ProjectOsGitSummaryStatus, diff_args, git_args, log_args, status_args};
+use super::{
+    ProjectGitDateRange, ProjectOsGitSummaryStatus, commit_numstat_args, date_log_args, diff_args,
+    git_args, log_args, status_args,
+};
 use crate::project_os::SECOND_BRAIN_ROOT_NAMES;
 
 #[test]
@@ -76,6 +79,8 @@ fn git_summary_command_is_registered_and_uses_read_only_git_argv() {
         diff_args("--name-status", None),
         diff_args("--stat", Some("1234567..HEAD")),
         log_args(Some("1234567..HEAD")),
+        date_log_args(&test_date_range()),
+        commit_numstat_args("1234567890abcdef1234567890abcdef12345678"),
     ];
     for args in argv_sets {
         assert_git_args_are_read_only(&args);
@@ -108,8 +113,17 @@ fn git_summary_commands_exclude_second_brain_paths_before_git_reads() {
         diff_args("--name-status", None),
         diff_args("--stat", Some("1234567..HEAD")),
         log_args(Some("1234567..HEAD")),
+        date_log_args(&test_date_range()),
+        commit_numstat_args("1234567890abcdef1234567890abcdef12345678"),
     ] {
         assert_git_args_exclude_second_brain_paths(&args);
+    }
+}
+
+fn test_date_range() -> ProjectGitDateRange {
+    ProjectGitDateRange {
+        start: chrono::NaiveDate::from_ymd_opt(2026, 7, 1).expect("valid start"),
+        end: chrono::NaiveDate::from_ymd_opt(2026, 7, 3).expect("valid end"),
     }
 }
 

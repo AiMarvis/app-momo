@@ -1,26 +1,32 @@
-import { readProjectGitSummary, type ProjectGitSummary } from "~/lib/project_os_fs";
+import {
+  readProjectGitSummary,
+  type ProjectGitSummary,
+  type ProjectGitSummaryRequest,
+} from "~/lib/project_os_fs";
 
 import type { ProjectOsGitReceipt } from "./work_os_store";
 
 async function readProjectGitSummaryForAnalysis(
   path: string,
-  previousCommit: string | null,
+  request: ProjectGitSummaryRequest,
 ): Promise<ProjectGitSummary> {
   try {
-    return await readProjectGitSummary(path, previousCommit);
+    return await readProjectGitSummary(path, request);
   } catch (error) {
     const message = errorMessage(error);
     if (/invalid project git summary path|invalid project root/i.test(message)) throw error;
     return {
       status: "failed",
       head: null,
-      previousCommit,
+      previousCommit: request.previousCommit ?? null,
       range: null,
       changedPaths: [],
       statusShort: [],
       diffNameStatus: [],
       diffStat: [],
       logOneline: [],
+      commitsByDate: [],
+      workingTree: { stagedPaths: [], unstagedPaths: [], untrackedPaths: [] },
       message,
     };
   }
@@ -64,7 +70,7 @@ function projectGitReceiptFromSummary(summary: ProjectGitSummary): ProjectOsGitR
 
 function gitReceiptSummary(summary: ProjectGitSummary): string {
   const changedCount = summary.changedPaths.length;
-  const commitCount = summary.logOneline.length;
+  const commitCount = summary.commitsByDate.reduce((count, date) => count + date.commits.length, 0);
   if (changedCount === 0 && commitCount === 0)
     return "Git was checked; no changed files were found.";
   const fileCopy = `${changedCount} changed ${changedCount === 1 ? "path" : "paths"}`;

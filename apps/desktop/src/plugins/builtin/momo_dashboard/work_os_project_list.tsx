@@ -26,11 +26,18 @@ import {
   SELECT_CLASS,
   StatusSelect,
   TableHeader,
-  TableText,
 } from "./work_os_dashboard_parts";
 
 const ROW_BUTTON_CLASS =
   "inline-flex min-w-0 items-center justify-center gap-1.5 rounded-xs border border-border bg-bg-primary px-2 py-1.5 text-xs text-text-secondary transition-colors hover:bg-ghost-hover hover:text-text-primary disabled:cursor-not-allowed disabled:opacity-60";
+
+const PROJECT_ISSUE_STATUS_GROUPS = [
+  { id: "todo", label: "해야 할 일" },
+  { id: "doing", label: "진행 중" },
+  { id: "done", label: "완료" },
+] as const;
+
+type ProjectIssueStatusGroup = (typeof PROJECT_ISSUE_STATUS_GROUPS)[number]["id"];
 
 function ProjectList(props: { projects: readonly WorkProject[] }) {
   const [linkingProjectId, setLinkingProjectId] = createSignal<string | null>(null);
@@ -67,7 +74,7 @@ function ProjectList(props: { projects: readonly WorkProject[] }) {
         <DatabaseBar
           count={props.projects.length}
           label="Project database"
-          properties="Status / Folder / Sync / Issues"
+          properties="Status / Period / Folder / Sync / Issues"
         />
         <TableHeader columns="2xl:grid 2xl:grid-cols-[minmax(12rem,1fr)_7rem_minmax(12rem,0.8fr)_minmax(13rem,1fr)_minmax(13rem,1fr)_6rem_5rem]">
           <span>Project</span>
@@ -92,7 +99,7 @@ function ProjectList(props: { projects: readonly WorkProject[] }) {
                   >
                     <p class="truncate text-sm font-medium text-text-primary">{project.name}</p>
                     <p class="mt-1 truncate text-[0.75rem] text-text-muted">
-                      created {formatDate(project.createdAt)}
+                      {formatProjectRange(project)}
                     </p>
                   </button>
                   <ProjectStatusSelect
@@ -139,7 +146,7 @@ function ProjectList(props: { projects: readonly WorkProject[] }) {
                     }
                     onAnalyze={() => void analyzeProject(project)}
                   />
-                  <TableText value={`${projectIssues().length} issues`} />
+                  <ProjectIssueBadges counts={projectIssueStatusCounts(projectIssues())} />
                   <button
                     type="button"
                     class="rounded-xs border border-border bg-bg-primary px-2 py-1.5 text-xs text-text-secondary transition-colors hover:bg-ghost-hover hover:text-text-primary"
@@ -173,6 +180,7 @@ function ProjectIssueDialog(props: {
   onClose: () => void;
 }) {
   const titleId = `project-issues-${props.project.id}`;
+  const counts = () => projectIssueStatusCounts(props.issues);
 
   return (
     <div
@@ -191,9 +199,9 @@ function ProjectIssueDialog(props: {
             <h2 id={titleId} class="truncate text-sm font-semibold text-text-primary">
               {props.project.name}
             </h2>
-            <p class="text-[0.75rem] text-text-muted">
-              Project issues / {props.issues.length} total / created{" "}
-              {formatDate(props.project.createdAt)}
+            <p class="text-[0.75rem] break-words text-text-muted">
+              {formatProjectRange(props.project)} / {props.project.status} /{" "}
+              {folderCopy(props.project)}
             </p>
           </div>
           <button type="button" class={ROW_BUTTON_CLASS} onClick={props.onClose}>
@@ -201,9 +209,28 @@ function ProjectIssueDialog(props: {
           </button>
         </header>
         <div class="min-h-0 flex-1 overflow-y-auto p-3">
-          <IssueRows issues={props.issues} />
+          <div class="mb-3 flex min-w-0 flex-wrap gap-1.5">
+            <ProjectIssueBadges counts={counts()} />
+          </div>
+          <ProjectReceipt project={props.project} />
+          <IssueStatusColumns issues={props.issues} />
         </div>
       </div>
+    </div>
+  );
+}
+
+function ProjectIssueBadges(props: { counts: Record<ProjectIssueStatusGroup, number> }) {
+  return (
+    <div class="flex min-w-0 flex-wrap gap-1">
+      <For each={PROJECT_ISSUE_STATUS_GROUPS}>
+        {(group) => (
+          <span class="inline-flex items-center gap-1 rounded-xs border border-border bg-bg-secondary px-1.5 py-0.5 text-[0.6875rem] text-text-secondary">
+            <span>{group.id}</span>
+            <span class="font-mono text-text-primary">{props.counts[group.id]}</span>
+          </span>
+        )}
+      </For>
     </div>
   );
 }
@@ -258,7 +285,6 @@ function ProjectSyncCell(props: { project: WorkProject; running: boolean; onAnal
         <span>Auto Sync</span>
       </label>
       <p class="truncate text-[0.75rem] text-text-muted">{manualSyncCopy(props.project)}</p>
-      <ProjectReceipt project={props.project} />
     </div>
   );
 }
@@ -320,27 +346,37 @@ function ProjectReceipt(props: { project: WorkProject }) {
   );
 }
 
-function IssueRows(props: { issues: readonly WorkItem[] }) {
+function IssueStatusColumns(props: { issues: readonly WorkItem[] }) {
   return (
-    <div class="min-w-0">
+    <div class="mt-3 min-w-0">
       <Show
         when={props.issues.length > 0}
         fallback={<p class="text-[0.75rem] text-text-muted">No linked issues</p>}
       >
-        <div class="grid gap-1">
-          <For each={props.issues}>
-            {(issue) => (
-              <div class="grid min-w-0 gap-2 rounded-xs border border-border bg-bg-secondary/70 p-2 md:grid-cols-[minmax(16rem,1fr)_6.5rem_6.5rem] md:items-start">
-                <IssueCopy issue={issue} />
-                <PrioritySelect
-                  value={issue.priority}
-                  onChange={(priority) => updateWorkIssuePriority(issue.id, priority)}
-                />
-                <StatusSelect
-                  value={issue.status}
-                  onChange={(status) => updateWorkIssueStatus(issue.id, status)}
-                />
-              </div>
+        <div
+          class="grid min-w-0 gap-2 md:grid-cols-3"
+          data-project-issue-layout="three-status-columns"
+        >
+          <For each={PROJECT_ISSUE_STATUS_GROUPS}>
+            {(group) => (
+              <section class="min-w-0 rounded-xs border border-border bg-bg-secondary/50">
+                <header class="flex items-center justify-between gap-2 border-b border-border px-2.5 py-2">
+                  <h3 class="text-xs font-medium text-text-primary">{group.label}</h3>
+                  <span class="font-mono text-[0.6875rem] text-text-muted">
+                    {issuesForStatusGroup(props.issues, group.id).length}
+                  </span>
+                </header>
+                <div class="grid min-w-0 gap-1.5 p-2">
+                  <Show
+                    when={issuesForStatusGroup(props.issues, group.id).length > 0}
+                    fallback={<p class="px-1 py-2 text-[0.75rem] text-text-muted">No issues</p>}
+                  >
+                    <For each={issuesForStatusGroup(props.issues, group.id)}>
+                      {(issue) => <IssueCard issue={issue} />}
+                    </For>
+                  </Show>
+                </div>
+              </section>
             )}
           </For>
         </div>
@@ -349,22 +385,32 @@ function IssueRows(props: { issues: readonly WorkItem[] }) {
   );
 }
 
-function IssueCopy(props: { issue: WorkItem }) {
+function IssueCard(props: { issue: WorkItem }) {
   return (
-    <div class="min-w-0">
+    <article class="grid min-w-0 gap-2 rounded-xs border border-border bg-bg-primary p-2">
       <p class="text-[0.75rem] leading-snug font-medium break-words text-text-primary">
         {props.issue.title}
       </p>
       <Show when={props.issue.userOutcome}>
-        <p class="mt-1 text-[0.75rem] text-text-secondary">Outcome: {props.issue.userOutcome}</p>
+        <p class="text-[0.75rem] break-words text-text-secondary">Outcome: {props.issue.userOutcome}</p>
       </Show>
       <Show when={props.issue.nextAction}>
-        <p class="mt-1 text-[0.75rem] text-text-secondary">Next: {props.issue.nextAction}</p>
+        <p class="text-[0.75rem] break-words text-text-secondary">Next: {props.issue.nextAction}</p>
       </Show>
       <Show when={issueReasonLine(props.issue)}>
-        <p class="mt-1 text-[0.6875rem] text-text-muted">{issueReasonLine(props.issue)}</p>
+        <p class="text-[0.6875rem] break-words text-text-muted">{issueReasonLine(props.issue)}</p>
       </Show>
-      <details class="mt-1 text-[0.6875rem] text-text-muted">
+      <div class="grid min-w-0 grid-cols-2 gap-1">
+        <PrioritySelect
+          value={props.issue.priority}
+          onChange={(priority) => updateWorkIssuePriority(props.issue.id, priority)}
+        />
+        <StatusSelect
+          value={props.issue.status}
+          onChange={(status) => updateWorkIssueStatus(props.issue.id, status)}
+        />
+      </div>
+      <details class="text-[0.6875rem] break-words text-text-muted">
         <summary class="cursor-pointer text-text-secondary">
           Technical details and source evidence
         </summary>
@@ -377,7 +423,7 @@ function IssueCopy(props: { issue: WorkItem }) {
           </ul>
         </Show>
       </details>
-    </div>
+    </article>
   );
 }
 
@@ -396,6 +442,39 @@ function manualSyncCopy(project: WorkProject): string {
     case "failed":
       return project.manualSync.error || "Project sync stopped before changing issues";
   }
+}
+
+function projectIssueStatusCounts(
+  issues: readonly WorkItem[],
+): Record<ProjectIssueStatusGroup, number> {
+  return {
+    todo: issues.filter((issue) => issueStatusGroup(issue) === "todo").length,
+    doing: issues.filter((issue) => issueStatusGroup(issue) === "doing").length,
+    done: issues.filter((issue) => issueStatusGroup(issue) === "done").length,
+  };
+}
+
+function issuesForStatusGroup(
+  issues: readonly WorkItem[],
+  group: ProjectIssueStatusGroup,
+): readonly WorkItem[] {
+  return issues.filter((issue) => issueStatusGroup(issue) === group);
+}
+
+function issueStatusGroup(issue: WorkItem): ProjectIssueStatusGroup {
+  if (issue.status === "doing" || issue.status === "done") return issue.status;
+  return "todo";
+}
+
+function formatProjectRange(project: WorkProject): string {
+  if (project.startDate && project.endDate) return `${project.startDate} - ${project.endDate}`;
+  if (project.startDate) return `${project.startDate} - no end`;
+  if (project.endDate) return `No start - ${project.endDate}`;
+  return `Created ${formatDate(project.createdAt)}`;
+}
+
+function folderCopy(project: WorkProject): string {
+  return project.linkedFolder === null ? "No folder linked" : project.linkedFolder.name;
 }
 
 function issueReasonLine(issue: WorkItem): string {
@@ -427,4 +506,4 @@ function formatDate(value: string): string {
   return value.slice(0, 10);
 }
 
-export { ProjectList };
+export { ProjectIssueDialog, ProjectList, projectIssueStatusCounts };

@@ -6,6 +6,7 @@ import { scanProjectOsFolder } from "~/lib/project_os_fs";
 import {
   buildProjectAnalysisPrompt,
   parseProjectAnalysisPlanJson,
+  projectAnalysisPlanLanguageErrors,
 } from "~/lib/momo/project_analysis_plan";
 import {
   projectAnalysisPlanToOperations,
@@ -106,14 +107,19 @@ async function runProjectOsAnalysis(project: WorkProject): Promise<ProjectOsAnal
 
   try {
     const manifest = await scanProjectOsFolder(project.linkedFolder.path);
-    const gitSummary = await readProjectGitSummaryForAnalysis(project.linkedFolder.path, null);
+    const gitSummary = await readProjectGitSummaryForAnalysis(project.linkedFolder.path, {
+      previousCommit: null,
+      startDate: project.startDate,
+      endDate: project.endDate,
+    });
     const gitReceipt = projectGitReceiptFromSummary(gitSummary);
     const generatedAt = new Date().toISOString();
     const existingIssues = existingIssueLines(project.id);
+    const issueLanguage = resolveLocale(settingsState.general.projectIssueLanguage);
     const agentPrompt = buildProjectAnalysisPrompt({
       projectId: project.id,
       projectName: project.name,
-      issueLanguage: resolveLocale(settingsState.general.projectIssueLanguage),
+      issueLanguage,
       manifest,
       gitSummary,
       existingIssues,
@@ -129,6 +135,10 @@ async function runProjectOsAnalysis(project: WorkProject): Promise<ProjectOsAnal
     const validation = parseProjectAnalysisPlanJson(agentResult.content, project.id);
     if (validation.kind === "invalid") {
       return failProjectOsRun(project.id, startedAt, validation.errors.join("; "), gitReceipt);
+    }
+    const languageErrors = projectAnalysisPlanLanguageErrors(validation.plan, issueLanguage);
+    if (languageErrors.length > 0) {
+      return failProjectOsRun(project.id, startedAt, languageErrors.join("; "), gitReceipt);
     }
 
     const runtime = projectAnalysisPlanToOperations(validation.plan, generatedAt);

@@ -52,7 +52,17 @@ pub(super) fn git_summary_with_outputs(
     previous_commit: Option<&str>,
     outputs: Vec<(Vec<String>, String)>,
 ) -> ProjectOsGitSummary {
-    project_git_summary_for_root(root, previous_commit, |args| {
+    git_summary_with_date_outputs(root, previous_commit, None, None, outputs)
+}
+
+pub(super) fn git_summary_with_date_outputs(
+    root: &Path,
+    previous_commit: Option<&str>,
+    start_date: Option<&str>,
+    end_date: Option<&str>,
+    outputs: Vec<(Vec<String>, String)>,
+) -> ProjectOsGitSummary {
+    project_git_summary_for_root(root, previous_commit, start_date, end_date, |args| {
         Ok(outputs
             .iter()
             .find_map(|(expected, output)| {

@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildProjectAnalysisPrompt,
   parseProjectAnalysisPlanJson,
+  projectAnalysisPlanLanguageErrors,
   type ProjectAnalysisPlan,
   type ProjectIssueCreate,
   type ProjectIssueUpdate,
@@ -86,6 +87,26 @@ describe("ProjectAnalysisPlan boundary", () => {
         diffNameStatus: ["M\tdocs/release.md"],
         diffStat: ["docs/release.md | 2 +-"],
         logOneline: ["aaaaaaaa prepare release"],
+        commitsByDate: [
+          {
+            date: "2026-07-06",
+            commits: [
+              {
+                shortHash: "aaaaaaa",
+                subject: "prepare release",
+                author: "Momo",
+                authorDate: "2026-07-06T09:00:00+09:00",
+                changedPaths: ["docs/release.md"],
+                diffStat: [{ path: "docs/release.md", additions: 1, deletions: 1 }],
+              },
+            ],
+          },
+        ],
+        workingTree: {
+          stagedPaths: [],
+          unstagedPaths: ["docs/release.md"],
+          untrackedPaths: [],
+        },
         message: null,
       },
       existingIssues: ["id=issue_existing; title=Confirm who owns launch review; status=todo"],
@@ -142,6 +163,30 @@ describe("ProjectAnalysisPlan boundary", () => {
         diffNameStatus: [],
         diffStat: [],
         logOneline: ["aaaaaaaa release checklist"],
+        commitsByDate: [
+          { date: "2026-07-05", commits: [] },
+          {
+            date: "2026-07-06",
+            commits: [
+              {
+                shortHash: "aaaaaaa",
+                subject: "release checklist",
+                author: "Momo",
+                authorDate: "2026-07-06T09:00:00+09:00",
+                changedPaths: ["src/release.ts", "docs/release.md"],
+                diffStat: [
+                  { path: "src/release.ts", additions: 3, deletions: 0 },
+                  { path: "docs/release.md", additions: 1, deletions: 1 },
+                ],
+              },
+            ],
+          },
+        ],
+        workingTree: {
+          stagedPaths: ["src/release.ts"],
+          unstagedPaths: ["docs/release.md"],
+          untrackedPaths: [],
+        },
         message: null,
       },
       existingIssues: ["No existing Project OS issues."],
@@ -155,7 +200,65 @@ describe("ProjectAnalysisPlan boundary", () => {
     expect(prompt).toContain("sourceEvidence paths must stay unchanged");
     expect(prompt).toContain("Use Git metadata as the primary signal");
     expect(prompt).toContain("Keep every user-facing field very short");
-    expect(prompt).toContain("Prefer one concise issue");
+    expect(prompt).toContain("Use every commitsByDate entry");
+    expect(prompt).toContain('"status": "doing"');
+  });
+
+  it("rejects backlog statuses from LLM ProjectAnalysisPlan output", () => {
+    const result = parseProjectAnalysisPlanJson(
+      JSON.stringify({
+        ...validPlan(),
+        creates: [{ ...VALID_CREATE, status: "backlog" }],
+      }),
+      PROJECT_ID,
+    );
+
+    expect(result).toEqual({
+      kind: "invalid",
+      errors: ["creates[0].status must be todo, doing, or done"],
+    });
+  });
+
+  it("reports non-Korean user-facing strings after JSON validation when Korean is selected", () => {
+    const englishResult = parseProjectAnalysisPlanJson(JSON.stringify(validPlan()), PROJECT_ID);
+    expect(englishResult.kind).toBe("valid");
+    if (englishResult.kind !== "valid") return;
+
+    expect(projectAnalysisPlanLanguageErrors(englishResult.plan, "ko")).toEqual(
+      expect.arrayContaining([
+        "plan.summary must be Korean when Project Issue language is Korean",
+        "creates[0].title must be Korean when Project Issue language is Korean",
+      ]),
+    );
+
+    const koreanResult = parseProjectAnalysisPlanJson(
+      JSON.stringify({
+        kind: "project_analysis",
+        projectId: PROJECT_ID,
+        summary: "릴리즈 준비 상태를 짧게 확인해야 합니다.",
+        creates: [
+          {
+            kind: "project_issue",
+            projectId: PROJECT_ID,
+            title: "릴리즈 전 확인 항목 정리",
+            summary: "배포 전에 확인할 항목이 한곳에 보여야 합니다.",
+            userOutcome: "팀이 남은 확인 항목을 빠르게 이해합니다.",
+            nextAction: "다음 회의 전에 확인 항목과 담당자를 적습니다.",
+            status: "todo",
+            statusReason: "아직 확인 항목 정리가 남아 있습니다.",
+            priority: "high",
+            priorityReason: "배포 전 합의에 바로 필요합니다.",
+            sourceEvidence: ["docs/release.md"],
+            technicalDetails: "Git 메타데이터에서 릴리즈 문서 변경이 확인되었습니다.",
+          },
+        ],
+        updates: [],
+      }),
+      PROJECT_ID,
+    );
+    expect(koreanResult.kind).toBe("valid");
+    if (koreanResult.kind !== "valid") return;
+    expect(projectAnalysisPlanLanguageErrors(koreanResult.plan, "ko")).toEqual([]);
   });
 
   it("rejects empty required user-facing issue fields", () => {
